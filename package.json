@@ -1,0 +1,70 @@
+{
+  "name": "sevo",
+  "version": "0.0.0",
+  "description": "Composable Server Primitives Across Runtimes",
+  "homepage": "https://sevo.pages.dev",
+  "license": "MIT",
+  "author": "Maofeng <hornjs@qq.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hornjs/sevo.git"
+  },
+  "bin": {
+    "sevo": "./bin/sevo.mjs"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "LICENSE",
+    "README.md",
+    "README.zh-CN.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./bun": "./src/bun.ts",
+    "./cli": "./src/cli.ts",
+    "./deno": "./src/deno.ts",
+    "./log": "./src/log.ts",
+    "./node": "./src/node.ts",
+    "./static": "./src/static.ts",
+    "./stream": "./src/stream.ts",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "directories": {
+      "src": "dist"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "docs:build": "pnpm --dir docs build",
+    "docs:dev": "pnpm --dir docs dev",
+    "test": "vitest",
+    "prepare:publish": "prepare-publish --print-tree",
+    "prepare:publish:dry-run": "prepare-publish --dry-run",
+    "typecheck": "tsc --noEmit",
+    "release": "bumpp",
+    "prepublishOnly": "pnpm run build && pnpm run prepare:publish"
+  },
+  "dependencies": {
+    "@hornjs/evt": "^0.0.4",
+    "@types/bun": "^1.3.10",
+    "@types/deno": "^2.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@typescript/native-preview": "7.0.0-dev.20260316.1",
+    "bumpp": "^11.0.1",
+    "prepare-publish": "^0.1.0",
+    "tsdown": "^0.21.3",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
+  },
+  "resolutions": {
+    "sevo": "link:."
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "fest-examples-jsx",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "JITI_JSX=1 fest --prod --entry server.tsx --import jiti/register",
+    "dev": "JITI_JSX=1 fest --entry server.tsx --import jiti/register"
+  },
+  "devDependencies": {
+    "sevo": "latest",
+    "jiti": "^2.5.1",
+    "nano-jsx": "^0.1.0"
+  }
+}

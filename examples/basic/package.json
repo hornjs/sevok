@@ -1,0 +1,14 @@
+{
+  "name": "fest-examples-basic",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev:bun": "bun run ./bun.ts",
+    "dev:deno": "deno run --allow-net --allow-read ./deno.ts",
+    "dev:node": "node --experimental-strip-types ./node.ts",
+    "dev:stream": "node --experimental-strip-types ./stream.ts"
+  },
+  "devDependencies": {
+    "sevo": "latest"
+  }
+}

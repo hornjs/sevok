@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 120" role="img" aria-labelledby="title desc">
+  <title id="title">fest runtime badge</title>
+  <desc id="desc">Decorative badge used by the static file examples.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#201612" />
+      <stop offset="100%" stop-color="#7b2f12" />
+    </linearGradient>
+  </defs>
+  <rect width="320" height="120" rx="24" fill="url(#bg)" />
+  <circle cx="78" cy="60" r="30" fill="#f7c46b" />
+  <path d="M68 60h20M78 50v20" stroke="#201612" stroke-linecap="round" stroke-width="6" />
+  <text x="128" y="52" fill="#f7f2e8" font-family="IBM Plex Sans, Arial, sans-serif" font-size="18">
+    fetch-style
+  </text>
+  <text x="128" y="78" fill="#fddc8f" font-family="IBM Plex Sans, Arial, sans-serif" font-size="28" font-weight="700">
+    FEST
+  </text>
+</svg>

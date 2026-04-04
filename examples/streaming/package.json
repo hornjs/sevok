@@ -1,0 +1,12 @@
+{
+  "name": "fest-examples-hello-world",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "fest --prod",
+    "dev": "fest"
+  },
+  "devDependencies": {
+    "sevo": "latest"
+  }
+}

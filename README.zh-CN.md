@@ -76,6 +76,22 @@ import { StreamRuntimeAdapter } from "sevok/stream";
 `fetch` 是未命中路由时的兜底处理函数。如果省略 `fetch`，那么
 `routes` 必须包含 `/*`。
 
+每个路由项也可以写成按方法分发的对象：
+
+```ts
+{
+  "/users": {
+    GET: () => new Response("list"),
+    POST: () => new Response("create"),
+    "*": () => new Response("method fallback"),
+  },
+}
+```
+
+方法匹配顺序是：先匹配显式请求方法，再从 `HEAD` 回退到 `GET`，最后才使用
+`*` 作为未显式声明方法的兜底处理函数。`405 Method Not Allowed` 响应里的
+`Allow` 头仍然只会列出显式声明的方法。
+
 ### 调用上下文
 
 使用 `createContextKey()` 与 `ctx.set()` / `ctx.get()` 可以安全地在中间件和处理函数之间共享调用级状态。

@@ -21,6 +21,11 @@ export type MaybePromise<T> = T | Promise<T>;
 export type HTTPMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS";
 
 /**
+ * Wildcard key for handlers that accept any HTTP method not matched explicitly.
+ */
+export type ServerWildcardMethod = "*";
+
+/**
  * Core request handler function.
  *
  * Receives an `InvocationContext` containing the request and invocation state.
@@ -61,7 +66,7 @@ export type ServerHandler = ServerHandlerFunction | ServerHandlerObject;
  * This is the route-table branch used when the same pathname needs distinct
  * handlers for different HTTP methods.
  */
-export type ServerMethodHandlers = Partial<Record<HTTPMethod, ServerHandler>>;
+export type ServerMethodHandlers = Partial<Record<HTTPMethod | ServerWildcardMethod, ServerHandler>>;
 
 /**
  * Error handler for failures raised during request handling.
@@ -586,6 +591,10 @@ function resolveRouteHandler(
     return route.GET;
   }
 
+  if (route["*"]) {
+    return route["*"];
+  }
+
   return undefined;
 }
 
@@ -594,7 +603,7 @@ function resolveRouteMethods(route: RouteValue): HTTPMethod[] {
     return [];
   }
 
-  const methods = Object.keys(route) as HTTPMethod[];
+  const methods = Object.keys(route).filter((method) => method !== "*") as HTTPMethod[];
   if (methods.includes("GET") && !methods.includes("HEAD")) {
     methods.push("HEAD");
   }

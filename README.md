@@ -75,6 +75,23 @@ Bun-style precedence:
 `fetch` is the fallback handler for unmatched requests. If you omit `fetch`,
 your route table must include `/*`.
 
+Each route entry can also use a method map:
+
+```ts
+{
+  "/users": {
+    GET: () => new Response("list"),
+    POST: () => new Response("create"),
+    "*": () => new Response("method fallback"),
+  },
+}
+```
+
+Method selection prefers the explicit request method first, then falls back
+from `HEAD` to `GET`, and finally uses `*` for any method that does not have an
+explicit handler. The `Allow` header for `405 Method Not Allowed` responses
+still lists only the explicit methods.
+
 ### Invocation Context
 
 Use `createContextKey()` and `ctx.set()` / `ctx.get()` to share per-invocation state safely across middleware and handlers.

@@ -106,6 +106,27 @@ describe("unstable_buildRouteTree + unstable_match", () => {
     });
   });
 
+  it("falls back to '*' when no explicit method handler matches", () => {
+    const any = vi.fn(async () => new Response("any"));
+    const get = vi.fn(async () => new Response("get"));
+    const tree = unstable_buildRouteTree({
+      "/users": {
+        GET: get,
+        "*": any,
+      },
+    });
+
+    expect(
+      unstable_match(tree, new Request("http://localhost/users", { method: "GET" })).matched[0]?.handler,
+    ).toBe(get);
+    expect(
+      unstable_match(tree, new Request("http://localhost/users", { method: "DELETE" })).matched[0]?.handler,
+    ).toBe(any);
+    expect(
+      unstable_match(tree, new Request("http://localhost/users", { method: "HEAD" })).matched[0]?.handler,
+    ).toBe(get);
+  });
+
   it("keeps path candidates when method filtering removes some matches", () => {
     const exact = vi.fn(async () => new Response("exact"));
     const paramPost = vi.fn(async () => new Response("param-post"));
@@ -190,6 +211,28 @@ describe("unstable_buildRouteTree + unstable_match", () => {
 
     expect(response.status).toBe(405);
     expect(response.headers.get("Allow")).toBe("GET, POST, HEAD");
+  });
+
+  it("does not return 405 when '*' is present for the matched path", async () => {
+    const handler = unstable_convertRoutesToHandler({
+      input: unstable_buildRouteTree({
+        "/users": {
+          GET: () => new Response("list"),
+          "*": () => new Response("fallback"),
+        },
+      }),
+    });
+
+    const { InvocationContext } = await import("../src/core");
+    const context = new InvocationContext({
+      request: new Request("http://localhost/users", { method: "DELETE" }),
+      capabilities: {} as any,
+      params: {},
+    });
+    const response = await handler(context);
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("fallback");
   });
 
   it("clears stale params when a context is rerouted through a fallback", async () => {

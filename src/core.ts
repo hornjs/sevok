@@ -25,9 +25,43 @@ export type HTTPMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | 
  *
  * Receives an `InvocationContext` containing the request and invocation state.
  * Runtime adapters, middleware, and higher-level helpers all eventually resolve down to a
- * `ServerHandler`.
+ * `ServerHandlerFunction`.
  */
-export type ServerHandler = (context: InvocationContext) => MaybePromise<Response>;
+export type ServerHandlerFunction = (context: InvocationContext) => MaybePromise<Response>;
+
+/**
+ * Object form of a handler.
+ *
+ * This makes it possible to attach middleware at the leaf of a middleware
+ * chain, which is useful for composing route handlers or feature modules.
+ */
+export type ServerHandlerObject = {
+  /**
+   * Additional middleware to apply immediately before `handle`.
+   */
+  middleware?: ServerMiddleware[];
+
+  /**
+   * Final request handler invoked after middleware has run.
+   */
+  handle: ServerHandlerFunction;
+};
+
+/**
+ * A request handler in either function or object form.
+ *
+ * This lets higher-level APIs accept a bare handler function for simple cases
+ * or a handler object when route-local middleware needs to be attached.
+ */
+export type ServerHandler = ServerHandlerFunction | ServerHandlerObject;
+
+/**
+ * Per-method handlers for a single route path.
+ *
+ * This is the route-table branch used when the same pathname needs distinct
+ * handlers for different HTTP methods.
+ */
+export type ServerMethodHandlers = Partial<Record<HTTPMethod, ServerHandler>>;
 
 /**
  * Error handler for failures raised during request handling.
@@ -43,7 +77,7 @@ export type ErrorHandler = (error: unknown) => MaybePromise<Response>;
  * `next` keeps the same handler signature so middleware can replace the request
  * object before passing control downstream.
  */
-export type ServerMiddlewareFunction = (context: InvocationContext, next: ServerHandler) => MaybePromise<Response>;
+export type ServerMiddlewareFunction = (context: InvocationContext, next: ServerHandlerFunction) => MaybePromise<Response>;
 
 /**
  * A named middleware reference resolved at execution time.
@@ -96,24 +130,6 @@ export type ServerMiddleware =
 export type ServerMiddlewareResolver = (name: ServerMiddlewareName) => ServerMiddlewareFunction | undefined;
 
 /**
- * Object form of a handler.
- *
- * This makes it possible to attach middleware at the leaf of a middleware
- * chain, which is useful for composing route handlers or feature modules.
- */
-export type ServerHandlerObject = {
-  /**
-   * Additional middleware to apply immediately before `handleRequest`.
-   */
-  middleware?: ServerMiddleware[];
-
-  /**
-   * Final request handler invoked after middleware has run.
-   */
-  handleRequest: ServerHandler;
-};
-
-/**
  * Route-table shorthand keyed by pathname.
  *
  * Each path can resolve to a single handler, a handler object with per-route
@@ -123,8 +139,7 @@ export type ServerHandlerObject = {
 export type ServerRoutes<TPath extends string = string> = {
   [Path in TPath]:
     | ServerHandler
-    | ServerHandlerObject
-    | Partial<Record<HTTPMethod, ServerHandler | ServerHandlerObject>>;
+    | ServerMethodHandlers;
 };
 
 /**
@@ -373,14 +388,14 @@ export function createWaitUntil(): WaitUntil {
  * Normalize handlers so middleware runners can treat function and object forms
  * uniformly.
  *
- * A bare handler becomes `{ handleRequest }`, while object handlers are returned
+ * A bare handler becomes `{ handle }`, while object handlers are returned
  * unchanged.
  */
 export function toServerHandlerObject(
-  handler: ServerHandler | ServerHandlerObject,
+  handler: ServerHandler,
 ): ServerHandlerObject {
   if (typeof handler === "function") {
-    return { handleRequest: handler }
+    return { handle: handler }
   }
   return handler;
 }
@@ -388,21 +403,27 @@ export function toServerHandlerObject(
 /**
  * Type guard to check if a value conforms to the `ServerHandlerObject` shape.
  *
- * This is used to distinguish between a bare `ServerHandler` function and an
+ * This is used to distinguish between a bare `ServerHandlerFunction` and an
  * object wrapper that may also carry per-route middleware.
  */
 export function isServerHandlerObject(value: unknown): value is ServerHandlerObject {
   return value != null
     && !Array.isArray(value)
     && typeof value === "object"
-    && "handleRequest" in value
-    && typeof value.handleRequest === "function";
+    && "handle" in value
+    && typeof value.handle === "function";
 }
 
+/**
+ * Input for running a middleware chain against a terminal handler.
+ *
+ * `resolve` is only needed when the middleware array may contain named
+ * middleware entries instead of executable middleware functions.
+ */
 export type RunMiddlewareOptions = {
   context: InvocationContext;
   middleware: ServerMiddleware[];
-  terminal: ServerHandler | ServerHandlerObject;
+  terminal: ServerHandler;
   resolve?: ServerMiddlewareResolver;
 };
 
@@ -437,38 +458,38 @@ export function runMiddleware({
       throw context.request.signal.reason;
     }
 
-    const fn = middleware[i];
-    if (fn == null) {
-      const { middleware, handleRequest } = toServerHandlerObject(terminal);
+    const entry = middleware[i];
+    if (entry == null) {
+      const { middleware, handle } = toServerHandlerObject(terminal);
       if (middleware?.length) {
         return runMiddleware({
           context,
           middleware,
-          terminal: handleRequest,
+          terminal: handle,
           resolve,
         });
       }
       return await raceRequestAbort(
-        Promise.resolve(handleRequest(context)),
+        Promise.resolve(handle(context)),
         context.request,
       );
     }
 
     let nextPromise: Promise<Response> | undefined;
-    let next: ServerHandler = (nextContext) => {
+    let next: ServerHandlerFunction = (nextContext) => {
       nextPromise = dispatch(nextContext, i + 1);
       return nextPromise;
     };
 
-    const fn2 = typeof fn === "function" ? fn : resolve?.(fn);
-    if (!fn2) {
+    const fn = typeof entry === "function" ? entry : resolve?.(entry);
+    if (!fn) {
       // Unresolved named middleware is intentionally skipped so resolver
       // implementations can decide whether to ignore or throw.
       return next(context);
     }
 
     let response = await raceRequestAbort(
-      Promise.resolve(fn2(context, next)),
+      Promise.resolve(fn(context, next)),
       context.request,
     );
 
@@ -500,8 +521,7 @@ type RouteInput =
 
 type RouteValue =
   | ServerHandler
-  | ServerHandlerObject
-  | Partial<Record<HTTPMethod, ServerHandler | ServerHandlerObject>>;
+  | ServerMethodHandlers;
 
 type CompiledRoute = {
   path: string;
@@ -537,7 +557,7 @@ type RouteCandidate = {
  * method.
  */
 export type UnstableRouteMatch = RouteCandidate & {
-  handler: ServerHandler | ServerHandlerObject;
+  handler: ServerHandler;
   method?: HTTPMethod;
 };
 
@@ -553,7 +573,7 @@ export type UnstableRouteMatchResult = {
 function resolveRouteHandler(
   route: RouteValue,
   method?: HTTPMethod,
-): ServerHandler | ServerHandlerObject | undefined {
+): ServerHandler | undefined {
   if (typeof route === "function" || isServerHandlerObject(route)) {
     return route;
   }
@@ -734,12 +754,12 @@ export function unstable_match(
 
 export type UnstableConvertRoutesToHandlerOptions = {
   input: RouteTree;
-  fallback?: ServerHandler;
+  fallback?: ServerHandlerFunction;
   runRouteMiddleware?: (options: Omit<RunMiddlewareOptions, "resolve">) => Promise<Response>;
 };
 
 /**
- * Turn a precompiled route tree into a `ServerHandler`.
+ * Turn a precompiled route tree into a `ServerHandlerFunction`.
  *
  * Pathname matches are resolved using Bun-style precedence. When a pathname
  * matches but the method does not, the returned handler responds with `405`
@@ -750,7 +770,7 @@ export function unstable_convertRoutesToHandler({
   input,
   fallback,
   runRouteMiddleware,
-}: UnstableConvertRoutesToHandlerOptions): ServerHandler {
+}: UnstableConvertRoutesToHandlerOptions): ServerHandlerFunction {
   return async (context) => {
     const result = unstable_match(input, context.request);
     const route = result.matched[0];
@@ -763,7 +783,7 @@ export function unstable_convertRoutesToHandler({
       }
 
       if (!route.handler.middleware?.length) {
-        return route.handler.handleRequest(context);
+        return route.handler.handle(context);
       }
 
       if (!runRouteMiddleware) {
@@ -773,7 +793,7 @@ export function unstable_convertRoutesToHandler({
       return runRouteMiddleware({
         context,
         middleware: route.handler.middleware,
-        terminal: route.handler.handleRequest,
+        terminal: route.handler.handle,
       });
     }
 
@@ -1027,7 +1047,7 @@ export interface ServerOptions {
    * route table. When `routes` is omitted, this acts as the primary request
    * handler.
    */
-  fetch?: ServerHandler;
+  fetch?: ServerHandlerFunction;
 
   /**
    * Handle errors raised while processing requests.
@@ -1212,7 +1232,7 @@ export class Server extends EventDispatcher<ServerEventMap> {
   readonly waitUntil?: (promise: Promise<unknown>) => void;
 
   #wait: WaitUntil | undefined;
-  #kernel: ServerHandler;
+  #kernel: ServerHandlerFunction;
   #adapter: RuntimeAdapter;
   #url?: string;
 
@@ -1331,6 +1351,9 @@ export class Server extends EventDispatcher<ServerEventMap> {
 
   /**
    * Invoke the composed request pipeline directly.
+   *
+   * If runtime adapter initialization is still in flight, this waits for the
+   * adapter setup to finish before dispatching the request.
    */
   handle(context: InvocationContext): MaybePromise<Response> {
     if (this.#adapterPromise) {
@@ -1447,7 +1470,7 @@ export class Server extends EventDispatcher<ServerEventMap> {
  * Compose fetch handler, middleware, and optional error handling into the
  * single request kernel used by `Server`.
  */
-export function wrapFetch(server: Server): ServerHandler {
+export function wrapFetch(server: Server): ServerHandlerFunction {
   const fetchHandler = server.options.fetch;
   const routes = server.options.routes;
   const middleware = server.options.middleware || [];
@@ -1456,7 +1479,7 @@ export function wrapFetch(server: Server): ServerHandler {
     resolve: server.options.middlewareResolver,
   });
 
-  let handler: ServerHandler;
+  let handler: ServerHandlerFunction;
   if (!routes) {
     if (!fetchHandler) {
       throw new Error("Server requires either `routes` or `fetch`.");

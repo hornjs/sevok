@@ -6,7 +6,7 @@ import { existsSync, statSync } from "node:fs";
 import {
   loadServerAdapter,
   type Server,
-  type ServerHandler,
+  type ServerHandlerFunction,
   type ServerMiddleware,
   type ServerOptions,
   type RuntimeAdapter,
@@ -30,7 +30,7 @@ export type LoadedServerEntry = {
    * - `module.default.fetch`
    * - or a default-exported function with fewer than two parameters
    */
-  fetch?: ServerHandler;
+  fetch?: ServerHandlerFunction;
 
   /**
    * The normalized loaded module.

@@ -59,9 +59,9 @@ describe("InvocationContext", () => {
 describe("toServerHandlerObject", () => {
   it("wraps bare handlers and keeps handler objects unchanged", () => {
     const fn = vi.fn();
-    const obj = { handleRequest: vi.fn(), middleware: [] };
+    const obj = { handle: vi.fn(), middleware: [] };
 
-    expect(toServerHandlerObject(fn)).toEqual({ handleRequest: fn });
+    expect(toServerHandlerObject(fn)).toEqual({ handle: fn });
     expect(toServerHandlerObject(obj)).toBe(obj);
   });
 });
@@ -211,7 +211,7 @@ describe("runMiddleware", () => {
             return next(ctx);
           },
         ],
-        handleRequest: async () => {
+        handle: async () => {
           calls.push("handler");
           return new Response("ok");
         },
@@ -351,7 +351,7 @@ describe("wrapFetch", () => {
         routes: {
           "/": {
             middleware: ["route"],
-            handleRequest: async () => {
+            handle: async () => {
               calls.push("handler");
               return new Response("ok");
             },

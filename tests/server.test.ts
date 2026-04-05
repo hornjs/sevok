@@ -167,9 +167,9 @@ describe("runMiddleware", () => {
       capabilities: {} as any,
       params: {},
     });
-    const response = await runMiddleware(
+    const response = await runMiddleware({
       context,
-      [
+      middleware: [
         async (ctx, next) => {
           calls.push(`a:${ctx.request.url}`);
           return next(ctx);
@@ -179,11 +179,11 @@ describe("runMiddleware", () => {
           return next(ctx);
         },
       ],
-      async () => {
+      terminal: async () => {
         calls.push("handler");
         return new Response("ok");
       },
-    );
+    });
 
     expect(await response.text()).toBe("ok");
     expect(calls).toEqual(["a:http://localhost/", "b", "handler"]);
@@ -196,15 +196,15 @@ describe("runMiddleware", () => {
       capabilities: {} as any,
       params: {},
     });
-    const response = await runMiddleware(
+    const response = await runMiddleware({
       context,
-      [
+      middleware: [
         async (ctx, next) => {
           calls.push("outer");
           return next(ctx);
         },
       ],
-      {
+      terminal: {
         middleware: [
           async (ctx, next) => {
             calls.push("inner");
@@ -216,7 +216,7 @@ describe("runMiddleware", () => {
           return new Response("ok");
         },
       },
-    );
+    });
 
     expect(await response.text()).toBe("ok");
     expect(calls).toEqual(["outer", "inner", "handler"]);
@@ -230,16 +230,16 @@ describe("runMiddleware", () => {
     });
 
     await expect(
-      runMiddleware(
+      runMiddleware({
         context,
-        [
+        middleware: [
           async (ctx, next) => {
             await next(ctx);
             return next(ctx);
           },
         ],
-        async () => new Response("ok"),
-      ),
+        terminal: async () => new Response("ok"),
+      }),
     ).rejects.toThrow("next() called multiple times");
   });
 
@@ -252,9 +252,68 @@ describe("runMiddleware", () => {
       params: {},
     });
 
-    await expect(runMiddleware(context, [], async () => new Response("ok"))).rejects.toThrow(
+    await expect(runMiddleware({
+      context,
+      middleware: [],
+      terminal: async () => new Response("ok"),
+    })).rejects.toThrow(
       "stopped",
     );
+  });
+
+  it("resolves named middleware entries before executing them", async () => {
+    const calls: string[] = [];
+    const resolve = vi.fn((name: string) => {
+      if (name === "named") {
+        return async (ctx: InvocationContext, next: any) => {
+          calls.push(`resolved:${ctx.request.url}`);
+          return next(ctx);
+        };
+      }
+    });
+    const context = new InvocationContext({
+      request: new Request("http://localhost/"),
+      capabilities: {} as any,
+      params: {},
+    });
+
+    const response = await runMiddleware({
+      context,
+      middleware: ["named"],
+      terminal: async () => {
+        calls.push("handler");
+        return new Response("ok");
+      },
+      resolve,
+    });
+
+    expect(await response.text()).toBe("ok");
+    expect(resolve).toHaveBeenCalledWith("named");
+    expect(calls).toEqual(["resolved:http://localhost/", "handler"]);
+  });
+
+  it("skips unresolved named middleware entries", async () => {
+    const calls: string[] = [];
+    const resolve = vi.fn(() => undefined);
+    const context = new InvocationContext({
+      request: new Request("http://localhost/"),
+      capabilities: {} as any,
+      params: {},
+    });
+
+    const response = await runMiddleware({
+      context,
+      middleware: ["missing"],
+      terminal: async () => {
+        calls.push("handler");
+        return new Response("ok");
+      },
+      resolve,
+    });
+
+    expect(await response.text()).toBe("ok");
+    expect(resolve).toHaveBeenCalledWith("missing");
+    expect(calls).toEqual(["handler"]);
   });
 });
 
@@ -283,6 +342,41 @@ describe("wrapFetch", () => {
 
     expect(await response.text()).toBe("ok");
     expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it("uses middlewareResolver for top-level and route middleware names", async () => {
+    const calls: string[] = [];
+    const wrapped = wrapFetch({
+      options: {
+        routes: {
+          "/": {
+            middleware: ["route"],
+            handleRequest: async () => {
+              calls.push("handler");
+              return new Response("ok");
+            },
+          },
+          "/*": async () => new Response("not found", { status: 404 }),
+        },
+        middleware: ["global"],
+        middlewareResolver: vi.fn((name: string) => {
+          return async (ctx: InvocationContext, next: any) => {
+            calls.push(name);
+            return next(ctx);
+          };
+        }),
+      },
+    } as any);
+
+    const context = new InvocationContext({
+      request: new Request("http://localhost/"),
+      capabilities: {} as any,
+      params: {},
+    });
+    const response = await wrapped(context);
+
+    expect(await response.text()).toBe("ok");
+    expect(calls).toEqual(["global", "route", "handler"]);
   });
 });
 

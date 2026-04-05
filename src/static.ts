@@ -1,4 +1,4 @@
-import type { MaybePromise, ServerMiddleware } from "./core.ts";
+import type { MaybePromise, ServerMiddlewareFunction } from "./core.ts";
 
 /**
  * Configuration for `serveStatic()`.
@@ -57,7 +57,7 @@ const COMMON_MIME_TYPES: Record<string, string> = {
  * - extensionless paths try `name.html` and `name/index.html`
  * - explicit extensions are used as-is
  */
-export function serveStatic(options: ServeStaticOptions): ServerMiddleware {
+export function serveStatic(options: ServeStaticOptions): ServerMiddlewareFunction {
   const methods = new Set((options.methods || ["GET", "HEAD"]).map((m) => m.toUpperCase()));
 
   return async (ctx, next) => {

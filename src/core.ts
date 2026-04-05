@@ -43,7 +43,57 @@ export type ErrorHandler = (error: unknown) => MaybePromise<Response>;
  * `next` keeps the same handler signature so middleware can replace the request
  * object before passing control downstream.
  */
-export type ServerMiddleware = (context: InvocationContext, next: ServerHandler) => MaybePromise<Response>;
+export type ServerMiddlewareFunction = (context: InvocationContext, next: ServerHandler) => MaybePromise<Response>;
+
+/**
+ * A named middleware reference resolved at execution time.
+ *
+ * Use this when middleware registration and middleware lookup need to be
+ * decoupled, for example when an application maintains its own middleware
+ * registry.
+ *
+ * Consumers can extend `ServerMiddlewareNameMap` with module augmentation to
+ * surface application-specific named middleware entries in the type system.
+ *
+ * @example
+ * ```ts
+ * declare module "sevok" {
+ *   interface ServerMiddlewareNameMap {
+ *     auth: true;
+ *     cache: true;
+ *   }
+ * }
+ * ```
+ */
+export type ServerMiddlewareName = keyof ServerMiddlewareNameMap | (string & {});
+
+/**
+ * Augmentation hook for adding application-specific named middleware entries.
+ *
+ * Consumers can extend this interface with module augmentation so known
+ * middleware names appear in `ServerMiddlewareName`.
+ */
+export interface ServerMiddlewareNameMap { }
+
+/**
+ * A middleware entry accepted by server and handler middleware arrays.
+ *
+ * Entries can be either executable middleware functions or named references
+ * resolved through `ServerMiddlewareResolver`.
+ */
+export type ServerMiddleware =
+ | ServerMiddlewareFunction
+ | ServerMiddlewareName;
+
+/**
+ * Resolve a named middleware entry into an executable middleware function.
+ *
+ * Returning `undefined` indicates that the name could not be resolved. The
+ * middleware runner intentionally treats unresolved names as skipped entries and
+ * continues the chain. Consumers that require fail-fast behavior should throw
+ * from their resolver instead of returning `undefined`.
+ */
+export type ServerMiddlewareResolver = (name: ServerMiddlewareName) => ServerMiddlewareFunction | undefined;
 
 /**
  * Object form of a handler.
@@ -349,6 +399,13 @@ export function isServerHandlerObject(value: unknown): value is ServerHandlerObj
     && typeof value.handleRequest === "function";
 }
 
+export type RunMiddlewareOptions = {
+  context: InvocationContext;
+  middleware: ServerMiddleware[];
+  terminal: ServerHandler | ServerHandlerObject;
+  resolve?: ServerMiddlewareResolver;
+};
+
 /**
  * Execute middleware in sequence and then hand off to the terminal handler.
  *
@@ -361,11 +418,12 @@ export function isServerHandlerObject(value: unknown): value is ServerHandlerObj
  * If the terminal handler is a `ServerHandlerObject`, its own `middleware`
  * array is executed after the outer middleware chain completes.
  */
-export function runMiddleware(
-  context: InvocationContext,
-  middleware: ServerMiddleware[],
-  terminal: ServerHandler | ServerHandlerObject,
-): Promise<Response> {
+export function runMiddleware({
+  context,
+  middleware,
+  terminal,
+  resolve,
+}: RunMiddlewareOptions): Promise<Response> {
   let index = -1;
 
   const dispatch = async (context: InvocationContext, i: number): Promise<Response> => {
@@ -380,10 +438,15 @@ export function runMiddleware(
     }
 
     const fn = middleware[i];
-    if (!fn) {
+    if (fn == null) {
       const { middleware, handleRequest } = toServerHandlerObject(terminal);
       if (middleware?.length) {
-        return runMiddleware(context, middleware, { handleRequest });
+        return runMiddleware({
+          context,
+          middleware,
+          terminal: handleRequest,
+          resolve,
+        });
       }
       return await raceRequestAbort(
         Promise.resolve(handleRequest(context)),
@@ -397,8 +460,15 @@ export function runMiddleware(
       return nextPromise;
     };
 
+    const fn2 = typeof fn === "function" ? fn : resolve?.(fn);
+    if (!fn2) {
+      // Unresolved named middleware is intentionally skipped so resolver
+      // implementations can decide whether to ignore or throw.
+      return next(context);
+    }
+
     let response = await raceRequestAbort(
-      Promise.resolve(fn(context, next)),
+      Promise.resolve(fn2(context, next)),
       context.request,
     );
 
@@ -665,11 +735,7 @@ export function unstable_match(
 export type UnstableConvertRoutesToHandlerOptions = {
   input: RouteTree;
   fallback?: ServerHandler;
-  runRouteMiddleware?: (
-    context: InvocationContext,
-    middleware: ServerMiddleware[],
-    terminal: ServerHandlerObject,
-  ) => Promise<Response>;
+  runRouteMiddleware?: (options: Omit<RunMiddlewareOptions, "resolve">) => Promise<Response>;
 };
 
 /**
@@ -704,11 +770,11 @@ export function unstable_convertRoutesToHandler({
         throw new Error("Route handler middleware requires `runRouteMiddleware`.");
       }
 
-      return runRouteMiddleware(
+      return runRouteMiddleware({
         context,
-        route.handler.middleware,
-        route.handler,
-      );
+        middleware: route.handler.middleware,
+        terminal: route.handler.handleRequest,
+      });
     }
 
     if (result.all.length > 0) {
@@ -976,6 +1042,14 @@ export interface ServerOptions {
    * Middleware is executed in the order provided.
    */
   middleware: ServerMiddleware[];
+
+  /**
+   * Resolve named middleware entries at request execution time.
+   *
+   * When omitted, named middleware entries are skipped. Throw from the resolver
+   * if unresolved names should fail the request instead.
+   */
+  middlewareResolver?: ServerMiddlewareResolver;
 
   /**
    * If set to `true`, server will not start listening automatically.
@@ -1377,6 +1451,10 @@ export function wrapFetch(server: Server): ServerHandler {
   const fetchHandler = server.options.fetch;
   const routes = server.options.routes;
   const middleware = server.options.middleware || [];
+  const callMiddleware = (options: Omit<RunMiddlewareOptions, "resolve">) => runMiddleware({
+    ...options,
+    resolve: server.options.middlewareResolver,
+  });
 
   let handler: ServerHandler;
   if (!routes) {
@@ -1393,11 +1471,15 @@ export function wrapFetch(server: Server): ServerHandler {
     handler = unstable_convertRoutesToHandler({
       input: unstable_buildRouteTree(routes),
       fallback: fetchHandler,
-      runRouteMiddleware: runMiddleware,
+      runRouteMiddleware: callMiddleware,
     });
   }
 
   return middleware.length === 0
     ? handler
-    : (context) => runMiddleware(context, middleware, handler);
+    : (context) => callMiddleware({
+      context,
+      middleware,
+      terminal: handler,
+    });
 }

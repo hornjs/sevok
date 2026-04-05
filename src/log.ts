@@ -1,5 +1,5 @@
 import c from "./_color.ts";
-import type { ServerMiddleware } from "./core.ts";
+import type { ServerMiddlewareFunction } from "./core.ts";
 
 /**
  * Logging middleware options.
@@ -29,7 +29,7 @@ const statusColors = {
  * Each completed request prints timestamp, method, url, status code, and total
  * response time using simple terminal colors.
  */
-export const log = (_options: LogOptions = {}): ServerMiddleware => {
+export const log = (_options: LogOptions = {}): ServerMiddlewareFunction => {
   return async (ctx, next) => {
     const start = performance.now();
     const req = ctx.request;

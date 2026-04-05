@@ -1,6 +1,6 @@
 {
   "name": "sevok",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Composable Server Primitives Across Runtimes",
   "homepage": "https://sevok.pages.dev",
   "license": "MIT",

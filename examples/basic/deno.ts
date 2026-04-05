@@ -1,6 +1,6 @@
-import { Server, createContextKey } from "servok";
-import { serveStatic } from "servok/static";
-import { DenoRuntimeAdapter } from "servok/deno";
+import { Server, createContextKey } from "sevok";
+import { serveStatic } from "sevok/static";
+import { DenoRuntimeAdapter } from "sevok/deno";
 
 const requestIdKey = createContextKey<string>("unknown");
 

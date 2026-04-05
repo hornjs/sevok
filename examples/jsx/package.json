@@ -7,7 +7,7 @@
     "dev": "JITI_JSX=1 fest --entry server.tsx --import jiti/register"
   },
   "devDependencies": {
-    "servok": "latest",
+    "sevok": "latest",
     "jiti": "^2.5.1",
     "nano-jsx": "^0.1.0"
   }

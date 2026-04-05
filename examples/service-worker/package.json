@@ -7,6 +7,6 @@
     "dev": "fest"
   },
   "devDependencies": {
-    "servok": "latest"
+    "sevok": "latest"
   }
 }

@@ -1,5 +1,5 @@
-import { Server } from "servok";
-import { StreamRuntimeAdapter } from "servok/stream";
+import { Server } from "sevok";
+import { StreamRuntimeAdapter } from "sevok/stream";
 
 type ExampleFetchEvent = {
   request: Request;

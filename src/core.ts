@@ -833,13 +833,13 @@ export type NodeServerOptions = (
  */
 export async function loadServerAdapter(): Promise<RuntimeAdapter> {
   if (process.versions.bun) {
-    const { BunRuntimeAdapter } = await import("servok/bun");
+    const { BunRuntimeAdapter } = await import("sevok/bun");
     return new BunRuntimeAdapter();
   } else if (process.versions.deno) {
-    const { DenoRuntimeAdapter } = await import("servok/deno");
+    const { DenoRuntimeAdapter } = await import("sevok/deno");
     return new DenoRuntimeAdapter();
   } else {
-    const { NodeRuntimeAdapter } = await import("servok/node");
+    const { NodeRuntimeAdapter } = await import("sevok/node");
     return new NodeRuntimeAdapter();
   }
 }
@@ -1003,7 +1003,7 @@ export interface ServerOptions {
   /**
    * Enabling this option allows multiple processes to bind to the same port, which is useful for load balancing.
    *
-   * **Note:** Despite Node.js built-in behavior that has `exclusive` flag (opposite of `reusePort`) enabled by default, servok uses non-exclusive mode for consistency.
+   * **Note:** Despite Node.js built-in behavior that has `exclusive` flag (opposite of `reusePort`) enabled by default, sevok uses non-exclusive mode for consistency.
    */
   reusePort?: boolean;
 
@@ -1092,7 +1092,7 @@ export function serve(init: ServerInit): Server {
  *
  * @example
  * ```ts
- * declare module "servok" {
+ * declare module "sevok" {
  *   interface ServerEventMapCustom {
  *     reload: CustomEvent<{ full: boolean }>;
  *   }
@@ -1243,7 +1243,7 @@ export class Server extends EventDispatcher<ServerEventMap> {
   /**
    * Create a `InvocationContext` view over an arbitrary `Request`.
    *
-   * This preserves the upstream request object and pairs it with servok
+   * This preserves the upstream request object and pairs it with sevok
    * invocation state such as runtime capabilities, `waitUntil`, and `params`.
    */
   createContext(request: Request, params?: Readonly<Record<string, string>>): InvocationContext {

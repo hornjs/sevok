@@ -1,6 +1,6 @@
-import { Server, createContextKey } from "servok";
-import { serveStatic } from "servok/static";
-import { BunRuntimeAdapter } from "servok/bun";
+import { Server, createContextKey } from "sevok";
+import { serveStatic } from "sevok/static";
+import { BunRuntimeAdapter } from "sevok/bun";
 
 const requestIdKey = createContextKey<string>("unknown");
 

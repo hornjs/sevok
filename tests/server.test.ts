@@ -4,6 +4,7 @@ import {
   createContextKey,
   createWaitUntil,
   InvocationContext,
+  loadServerAdapter,
   raceRequestAbort,
   runMiddleware,
   toServerHandlerObject,
@@ -285,6 +286,26 @@ describe("wrapFetch", () => {
   });
 });
 
+describe("loadServerAdapter", () => {
+  it("loads the Node adapter from the package's node subpath", async () => {
+    vi.doMock("sevok/node", async () => {
+      return {
+        NodeRuntimeAdapter: class {
+          marker = "sevok";
+        },
+      };
+    });
+
+    try {
+      const adapter = await loadServerAdapter();
+
+      expect(adapter).toMatchObject({ marker: "sevok" });
+    } finally {
+      vi.doUnmock("sevok/node");
+    }
+  });
+});
+
 describe("Server", () => {
   it("calls setup immediately and serve automatically unless manual", () => {
     const adapter = createAdapter();
@@ -441,7 +462,7 @@ describe("Server", () => {
     const deferred = Promise.withResolvers<void>();
     const adapter = createAdapter();
 
-    vi.doMock("servok/node", async () => {
+    vi.doMock("sevok/node", async () => {
       await deferred.promise;
 
       return {
@@ -467,7 +488,7 @@ describe("Server", () => {
       await expect(ready).rejects.toThrow("Call serve() first");
       expect(adapter.serve).not.toHaveBeenCalled();
     } finally {
-      vi.doUnmock("servok/node");
+      vi.doUnmock("sevok/node");
     }
   });
 

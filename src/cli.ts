@@ -157,7 +157,7 @@ export async function loadServerEntry(opts: LoadOptions): Promise<LoadedServerEn
         );
       } else if (/"\.(m|c)?tsx"/g.test(message)) {
         throw new Error(
-          `You need a compatible loader for JSX support (Deno, Bun, or servok --import jiti/register)`,
+          `You need a compatible loader for JSX support (Deno, Bun, or sevok --import jiti/register)`,
           { cause: error },
         );
       }
@@ -176,7 +176,7 @@ export async function loadServerEntry(opts: LoadOptions): Promise<LoadedServerEn
 }
 
 /**
- * Command-line flags accepted by the `servok` CLI.
+ * Command-line flags accepted by the `sevok` CLI.
  */
 export type CLIOptions = {
   /** Show help message */
@@ -369,7 +369,7 @@ async function startServer(cliOpts: CLIOptions) {
  */
 async function forkCLI(args: string[], runtimeArgs: string[]) {
   const srvxBin = fileURLToPath(
-    (globalThis as any).__SERVOK_BIN__ || new URL("../bin/servok.mjs", import.meta.url),
+    (globalThis as any).__SEVOK_BIN__ || new URL("../bin/sevok.mjs", import.meta.url),
   );
   const child = fork(srvxBin, [...args], {
     execArgv: [...process.execArgv, ...runtimeArgs].filter(Boolean),
@@ -608,8 +608,8 @@ export async function cliServe(cliOpts: CLIOptions): Promise<void> {
     });
 
     const { serve } = await import("./core.ts");
-    const { serveStatic } = await import("servok/static");
-    const { log } = await import("servok/log");
+    const { serveStatic } = await import("sevok/static");
+    const { log } = await import("sevok/log");
 
     // Resolve static assets relative to the entry file when possible so
     // colocated apps can rely on a nearby `public/` directory by default.

@@ -1,4 +1,4 @@
-# servok
+# sevok
 
 基于 Fetch API 的服务端基础库，提供中间件、调用上下文，以及 Bun、Deno、Node.js、流式事件宿主的运行时适配器。
 
@@ -18,19 +18,19 @@
 ## 安装
 
 ```bash
-pnpm add servok
+pnpm add sevok
 ```
 
 ## 导出入口
 
 ```ts
-import { Server, serve } from "servok";
-import { BunRuntimeAdapter } from "servok/bun";
-import { DenoRuntimeAdapter } from "servok/deno";
-import { NodeRuntimeAdapter } from "servok/node";
-import { log } from "servok/log";
-import { serveStatic } from "servok/static";
-import { StreamRuntimeAdapter } from "servok/stream";
+import { Server, serve } from "sevok";
+import { BunRuntimeAdapter } from "sevok/bun";
+import { DenoRuntimeAdapter } from "sevok/deno";
+import { NodeRuntimeAdapter } from "sevok/node";
+import { log } from "sevok/log";
+import { serveStatic } from "sevok/static";
+import { StreamRuntimeAdapter } from "sevok/stream";
 ```
 
 ## 核心概念
@@ -46,8 +46,8 @@ import { StreamRuntimeAdapter } from "servok/stream";
 
 `adapter` 是可选的。在 Bun、Deno、Node.js 环境下，通常可以不显式传入；
 `Server` 会根据当前运行时自动检测，并通过
-`import("servok/bun")`、`import("servok/deno")`、
-`import("servok/node")` 这类动态导入懒加载内置 adapter。
+`import("sevok/bun")`、`import("sevok/deno")`、
+`import("sevok/node")` 这类动态导入懒加载内置 adapter。
 
 一般只有这些场景才需要手动指定 `adapter`：
 
@@ -89,7 +89,7 @@ import { StreamRuntimeAdapter } from "servok/stream";
 - `error`：异步初始化 runtime adapter 失败时触发
 
 ```ts
-import { Server, ServerErrorEvent, ServerServeEvent } from "servok";
+import { Server, ServerErrorEvent, ServerServeEvent } from "sevok";
 
 server.addEventListener("serve", (event: ServerServeEvent) => {
   console.log("server ready", server.url);
@@ -103,7 +103,7 @@ server.addEventListener("error", (event: ServerErrorEvent) => {
 ## 基础示例
 
 ```ts
-import { Server, createContextKey } from "servok";
+import { Server, createContextKey } from "sevok";
 
 const requestIdKey = createContextKey<string>("unknown");
 
@@ -134,8 +134,8 @@ console.log(server.url);
 ### Bun
 
 ```ts
-import { Server } from "servok";
-import { BunRuntimeAdapter } from "servok/bun";
+import { Server } from "sevok";
+import { BunRuntimeAdapter } from "sevok/bun";
 
 const server = new Server({
   adapter: new BunRuntimeAdapter(),
@@ -152,8 +152,8 @@ await server.ready();
 ### Deno
 
 ```ts
-import { Server } from "servok";
-import { DenoRuntimeAdapter } from "servok/deno";
+import { Server } from "sevok";
+import { DenoRuntimeAdapter } from "sevok/deno";
 
 const server = new Server({
   adapter: new DenoRuntimeAdapter(),
@@ -170,8 +170,8 @@ await server.ready();
 ### Node.js
 
 ```ts
-import { Server } from "servok";
-import { NodeRuntimeAdapter } from "servok/node";
+import { Server } from "sevok";
+import { NodeRuntimeAdapter } from "sevok/node";
 
 const server = new Server({
   adapter: new NodeRuntimeAdapter(),
@@ -190,8 +190,8 @@ await server.ready();
 当宿主环境已经把请求封装成异步事件流时，可以使用 `StreamRuntimeAdapter`。
 
 ```ts
-import { Server } from "servok";
-import { StreamRuntimeAdapter } from "servok/stream";
+import { Server } from "sevok";
+import { StreamRuntimeAdapter } from "sevok/stream";
 
 async function* stream() {
   while (true) {
@@ -220,9 +220,9 @@ await server.serve();
 `serveStatic()` 可以直接作为普通中间件使用。
 
 ```ts
-import { Server } from "servok";
-import { NodeRuntimeAdapter } from "servok/node";
-import { serveStatic } from "servok/static";
+import { Server } from "sevok";
+import { NodeRuntimeAdapter } from "sevok/node";
+import { serveStatic } from "sevok/static";
 
 const server = new Server({
   adapter: new NodeRuntimeAdapter(),
@@ -324,13 +324,13 @@ server.addEventListener("close", () => {
 
 子路径导出：
 
-- `servok/bun`
-- `servok/cli`
-- `servok/deno`
-- `servok/log`
-- `servok/node`
-- `servok/static`
-- `servok/stream`
+- `sevok/bun`
+- `sevok/cli`
+- `sevok/deno`
+- `sevok/log`
+- `sevok/node`
+- `sevok/static`
+- `sevok/stream`
 
 ## 开发
 

@@ -167,6 +167,7 @@ describe("runMiddleware", () => {
       params: {},
     });
     const response = await runMiddleware(
+      context,
       [
         async (ctx, next) => {
           calls.push(`a:${ctx.request.url}`);
@@ -177,7 +178,6 @@ describe("runMiddleware", () => {
           return next(ctx);
         },
       ],
-      context,
       async () => {
         calls.push("handler");
         return new Response("ok");
@@ -196,13 +196,13 @@ describe("runMiddleware", () => {
       params: {},
     });
     const response = await runMiddleware(
+      context,
       [
         async (ctx, next) => {
           calls.push("outer");
           return next(ctx);
         },
       ],
-      context,
       {
         middleware: [
           async (ctx, next) => {
@@ -230,13 +230,13 @@ describe("runMiddleware", () => {
 
     await expect(
       runMiddleware(
+        context,
         [
           async (ctx, next) => {
             await next(ctx);
             return next(ctx);
           },
         ],
-        context,
         async () => new Response("ok"),
       ),
     ).rejects.toThrow("next() called multiple times");
@@ -251,7 +251,7 @@ describe("runMiddleware", () => {
       params: {},
     });
 
-    await expect(runMiddleware([], context, async () => new Response("ok"))).rejects.toThrow(
+    await expect(runMiddleware(context, [], async () => new Response("ok"))).rejects.toThrow(
       "stopped",
     );
   });

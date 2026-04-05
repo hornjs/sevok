@@ -362,8 +362,8 @@ export function isServerHandlerObject(value: unknown): value is ServerHandlerObj
  * array is executed after the outer middleware chain completes.
  */
 export function runMiddleware(
-  middleware: ServerMiddleware[],
   context: InvocationContext,
+  middleware: ServerMiddleware[],
   terminal: ServerHandler | ServerHandlerObject,
 ): Promise<Response> {
   let index = -1;
@@ -383,7 +383,7 @@ export function runMiddleware(
     if (!fn) {
       const { middleware, handleRequest } = toServerHandlerObject(terminal);
       if (middleware?.length) {
-        return runMiddleware(middleware, context, { handleRequest });
+        return runMiddleware(context, middleware, { handleRequest });
       }
       return await raceRequestAbort(
         Promise.resolve(handleRequest(context)),
@@ -666,8 +666,8 @@ export type UnstableConvertRoutesToHandlerOptions = {
   input: RouteTree;
   fallback?: ServerHandler;
   runRouteMiddleware?: (
-    middleware: ServerMiddleware[],
     context: InvocationContext,
+    middleware: ServerMiddleware[],
     terminal: ServerHandlerObject,
   ) => Promise<Response>;
 };
@@ -704,7 +704,11 @@ export function unstable_convertRoutesToHandler({
         throw new Error("Route handler middleware requires `runRouteMiddleware`.");
       }
 
-      return runRouteMiddleware(route.handler.middleware, context, route.handler);
+      return runRouteMiddleware(
+        context,
+        route.handler.middleware,
+        route.handler,
+      );
     }
 
     if (result.all.length > 0) {
@@ -1395,5 +1399,5 @@ export function wrapFetch(server: Server): ServerHandler {
 
   return middleware.length === 0
     ? handler
-    : (context) => runMiddleware(middleware, context, handler);
+    : (context) => runMiddleware(context, middleware, handler);
 }

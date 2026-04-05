@@ -133,9 +133,9 @@ export const generateConfig = async () => {
       lang: siteConfig.landing.heroCode.lang || "sh",
       defaultColor: "dark",
       themes: {
-        default: "github-dark",
-        dark: "github-dark",
-        light: "github-light",
+        default: "vitesse-dark",
+        dark: "vitesse-dark",
+        light: "vitesse-light",
       },
     })
   )

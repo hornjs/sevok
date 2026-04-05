@@ -5,3 +5,4 @@ pages_build_output_dir = "dist"
 [[d1_databases]]
 binding = "sevok_docs_db"
 database_name = "sevok-docs-db"
+database_id = "d67d3fe0-ac0d-4bfa-a09a-ded843561ab7"

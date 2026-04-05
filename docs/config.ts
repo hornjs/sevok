@@ -89,8 +89,8 @@ export default {
 
 /*
 Node.js: $ npx sevok
-          $ pnpx sevok
-          $ yarn dlx sevok
+         $ pnpx sevok
+         $ yarn dlx sevok
 Deno:    $ deno run -A npm:sevok
 Bun:     $ bunx --bun sevok
 CLI:     $ sevok

@@ -40,7 +40,7 @@ export default defineNuxtConfig({
   content: {
     database: {
       type: "d1",
-      bindingName: "sevo_docs_db"
+      bindingName: "servok_docs_db"
     }
   }
 })

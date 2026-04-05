@@ -9,6 +9,6 @@
     "dev:stream": "node --experimental-strip-types ./stream.ts"
   },
   "devDependencies": {
-    "sevo": "latest"
+    "servok": "latest"
   }
 }

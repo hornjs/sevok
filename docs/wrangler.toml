@@ -1,8 +1,8 @@
-name = "sevo"
+name = "servok"
 compatibility_date = "2026-04-03"
 pages_build_output_dir = "dist"
 
 [[d1_databases]]
-binding = "sevo_docs_db"
-database_name = "sevo-docs-db"
-database_id = "b1e505e6-3b8f-4f9f-ac60-cec354211d8b"
+binding = "servok_docs_db"
+database_name = "servok-docs-db"
+# database_id = "b1e505e6-3b8f-4f9f-ac60-cec354211d8b"

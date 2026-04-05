@@ -1,8 +1,8 @@
-# sevo
+# servok
 
 Web-standard server primitives with context-based handlers, middleware, and runtime adapters for Bun, Deno, Node.js, and stream-based hosts.
 
-[简体中文](./README.zh-CN.md) • [GitHub](https://github.com/hornjs/sevo)
+[简体中文](./README.zh-CN.md) • [GitHub](https://github.com/hornjs/servok)
 
 ## Features
 
@@ -18,19 +18,19 @@ Web-standard server primitives with context-based handlers, middleware, and runt
 ## Installation
 
 ```bash
-pnpm add sevo
+pnpm add servok
 ```
 
 ## Package Exports
 
 ```ts
-import { Server, serve } from "sevo";
-import { BunRuntimeAdapter } from "sevo/bun";
-import { DenoRuntimeAdapter } from "sevo/deno";
-import { NodeRuntimeAdapter } from "sevo/node";
-import { log } from "sevo/log";
-import { serveStatic } from "sevo/static";
-import { StreamRuntimeAdapter } from "sevo/stream";
+import { Server, serve } from "servok";
+import { BunRuntimeAdapter } from "servok/bun";
+import { DenoRuntimeAdapter } from "servok/deno";
+import { NodeRuntimeAdapter } from "servok/node";
+import { log } from "servok/log";
+import { serveStatic } from "servok/static";
+import { StreamRuntimeAdapter } from "servok/stream";
 ```
 
 ## Core Concepts
@@ -46,8 +46,8 @@ import { StreamRuntimeAdapter } from "sevo/stream";
 
 `adapter` is optional. In Bun, Deno, and Node.js environments, `Server` can
 auto-detect the current runtime and lazily load the matching built-in adapter
-with dynamic imports such as `import("sevo/bun")`,
-`import("sevo/deno")`, and `import("sevo/node")`.
+with dynamic imports such as `import("servok/bun")`,
+`import("servok/deno")`, and `import("servok/node")`.
 
 You usually only need to pass `adapter` when you want to customize native
 runtime options, force a specific adapter, or run in a non-standard host such
@@ -89,7 +89,7 @@ three lifecycle events:
 - `error`: fired when asynchronous adapter initialization fails
 
 ```ts
-import { Server, ServerErrorEvent, ServerServeEvent } from "sevo";
+import { Server, ServerErrorEvent, ServerServeEvent } from "servok";
 
 server.addEventListener("serve", (event: ServerServeEvent) => {
   console.log("server ready", server.url);
@@ -103,7 +103,7 @@ server.addEventListener("error", (event: ServerErrorEvent) => {
 ## Basic Example
 
 ```ts
-import { Server, createContextKey } from "sevo";
+import { Server, createContextKey } from "servok";
 
 const requestIdKey = createContextKey<string>("unknown");
 
@@ -134,8 +134,8 @@ console.log(server.url);
 ### Bun
 
 ```ts
-import { Server } from "sevo";
-import { BunRuntimeAdapter } from "sevo/bun";
+import { Server } from "servok";
+import { BunRuntimeAdapter } from "servok/bun";
 
 const server = new Server({
   adapter: new BunRuntimeAdapter(),
@@ -152,8 +152,8 @@ await server.ready();
 ### Deno
 
 ```ts
-import { Server } from "sevo";
-import { DenoRuntimeAdapter } from "sevo/deno";
+import { Server } from "servok";
+import { DenoRuntimeAdapter } from "servok/deno";
 
 const server = new Server({
   adapter: new DenoRuntimeAdapter(),
@@ -170,8 +170,8 @@ await server.ready();
 ### Node.js
 
 ```ts
-import { Server } from "sevo";
-import { NodeRuntimeAdapter } from "sevo/node";
+import { Server } from "servok";
+import { NodeRuntimeAdapter } from "servok/node";
 
 const server = new Server({
   adapter: new NodeRuntimeAdapter(),
@@ -190,8 +190,8 @@ await server.ready();
 The stream adapter is useful when a host runtime already exposes fetch events through an async iterator.
 
 ```ts
-import { Server } from "sevo";
-import { StreamRuntimeAdapter } from "sevo/stream";
+import { Server } from "servok";
+import { StreamRuntimeAdapter } from "servok/stream";
 
 async function* stream() {
   while (true) {
@@ -220,9 +220,9 @@ await server.serve();
 Use `serveStatic()` as regular middleware.
 
 ```ts
-import { Server } from "sevo";
-import { NodeRuntimeAdapter } from "sevo/node";
-import { serveStatic } from "sevo/static";
+import { Server } from "servok";
+import { NodeRuntimeAdapter } from "servok/node";
+import { serveStatic } from "servok/static";
 
 const server = new Server({
   adapter: new NodeRuntimeAdapter(),
@@ -324,13 +324,13 @@ Main export:
 
 Subpath exports:
 
-- `sevo/bun`
-- `sevo/cli`
-- `sevo/deno`
-- `sevo/log`
-- `sevo/node`
-- `sevo/static`
-- `sevo/stream`
+- `servok/bun`
+- `servok/cli`
+- `servok/deno`
+- `servok/log`
+- `servok/node`
+- `servok/static`
+- `servok/stream`
 
 ## Development
 

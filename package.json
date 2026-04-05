@@ -1,16 +1,16 @@
 {
-  "name": "sevo",
+  "name": "servok",
   "version": "0.0.1",
   "description": "Composable Server Primitives Across Runtimes",
-  "homepage": "https://sevo.pages.dev",
+  "homepage": "https://servok.pages.dev",
   "license": "MIT",
   "author": "Maofeng <hornjs@qq.com>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hornjs/sevo.git"
+    "url": "git+https://github.com/hornjs/servok.git"
   },
   "bin": {
-    "sevo": "./bin/sevo.mjs"
+    "servok": "./bin/servok.mjs"
   },
   "files": [
     "bin",
@@ -65,6 +65,6 @@
     "vitest": "^4.1.0"
   },
   "resolutions": {
-    "sevo": "link:."
+    "servok": "link:."
   }
 }

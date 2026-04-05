@@ -441,7 +441,7 @@ describe("Server", () => {
     const deferred = Promise.withResolvers<void>();
     const adapter = createAdapter();
 
-    vi.doMock("sevo/node", async () => {
+    vi.doMock("servok/node", async () => {
       await deferred.promise;
 
       return {
@@ -467,7 +467,7 @@ describe("Server", () => {
       await expect(ready).rejects.toThrow("Call serve() first");
       expect(adapter.serve).not.toHaveBeenCalled();
     } finally {
-      vi.doUnmock("sevo/node");
+      vi.doUnmock("servok/node");
     }
   });
 

@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  sevo: link:.
+  servok: link:.
 
 importers:
 
@@ -45,7 +45,7 @@ importers:
 
   examples/basic:
     devDependencies:
-      sevo:
+      servok:
         specifier: link:../..
         version: link:../..
 
@@ -57,25 +57,25 @@ importers:
       nano-jsx:
         specifier: ^0.1.0
         version: 0.1.0
-      sevo:
+      servok:
         specifier: link:../..
         version: link:../..
 
   examples/service-worker:
     devDependencies:
-      sevo:
+      servok:
         specifier: link:../..
         version: link:../..
 
   examples/stackblitz:
     devDependencies:
-      sevo:
+      servok:
         specifier: link:../..
         version: link:../..
 
   examples/streaming:
     devDependencies:
-      sevo:
+      servok:
         specifier: link:../..
         version: link:../..
 

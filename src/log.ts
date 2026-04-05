@@ -8,7 +8,7 @@ import type { ServerMiddleware } from "./core.ts";
  *
  * @example
  * ```ts
- * declare module "sevo/log" {
+ * declare module "servok/log" {
  *   interface LogOptions {
  *     requestId?: boolean;
  *   }

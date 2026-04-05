@@ -1,6 +1,6 @@
-import { Server, createContextKey } from "sevo";
-import { serveStatic } from "sevo/static";
-import { NodeRuntimeAdapter } from "sevo/node";
+import { Server, createContextKey } from "servok";
+import { serveStatic } from "servok/static";
+import { NodeRuntimeAdapter } from "servok/node";
 
 const requestIdKey = createContextKey<string>("unknown");
 

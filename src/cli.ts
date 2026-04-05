@@ -12,7 +12,7 @@ import {
   type RuntimeAdapter,
 } from "./core.ts";
 import c from "./_color.ts";
-import { sevoMeta } from "./_meta.ts";
+import { pkgMeta } from "./_meta.ts";
 
 export const defaultExts: string[] = [".mjs", ".js", ".mts", ".ts"];
 
@@ -157,7 +157,7 @@ export async function loadServerEntry(opts: LoadOptions): Promise<LoadedServerEn
         );
       } else if (/"\.(m|c)?tsx"/g.test(message)) {
         throw new Error(
-          `You need a compatible loader for JSX support (Deno, Bun, or sevo --import jiti/register)`,
+          `You need a compatible loader for JSX support (Deno, Bun, or servok --import jiti/register)`,
           { cause: error },
         );
       }
@@ -176,7 +176,7 @@ export async function loadServerEntry(opts: LoadOptions): Promise<LoadedServerEn
 }
 
 /**
- * Command-line flags accepted by the `sevo` CLI.
+ * Command-line flags accepted by the `servok` CLI.
  */
 export type CLIOptions = {
   /** Show help message */
@@ -369,7 +369,7 @@ async function startServer(cliOpts: CLIOptions) {
  */
 async function forkCLI(args: string[], runtimeArgs: string[]) {
   const srvxBin = fileURLToPath(
-    (globalThis as any).__SEVO_BIN__ || new URL("../bin/sevo.mjs", import.meta.url),
+    (globalThis as any).__SERVOK_BIN__ || new URL("../bin/servok.mjs", import.meta.url),
   );
   const child = fork(srvxBin, [...args], {
     execArgv: [...process.execArgv, ...runtimeArgs].filter(Boolean),
@@ -435,7 +435,7 @@ function versions(mainOpts: MainOptions): string[] {
   if (mainOpts.meta?.name) {
     versions.push(`${mainOpts.meta.name} ${mainOpts.meta.version || ""}`.trim());
   }
-  versions.push(`${sevoMeta.name} ${sevoMeta.version}`);
+  versions.push(`${pkgMeta.name} ${pkgMeta.version}`);
   versions.push(runtime());
   return versions;
 }
@@ -457,9 +457,9 @@ function runtime(): string {
  * Render the CLI help output.
  */
 export function usage(mainOpts: MainOptions): string {
-  const name = mainOpts.meta?.name || sevoMeta.name.split("/").pop()!;
-  const ver = mainOpts.meta?.version || sevoMeta.version;
-  const desc = mainOpts.meta?.description || sevoMeta.description;
+  const name = mainOpts.meta?.name || pkgMeta.name.split("/").pop()!;
+  const ver = mainOpts.meta?.version || pkgMeta.version;
+  const desc = mainOpts.meta?.description || pkgMeta.description;
   const formatSection = (
     rows: { label: string; renderLabel: () => string; description: string }[],
   ): string => {
@@ -608,8 +608,8 @@ export async function cliServe(cliOpts: CLIOptions): Promise<void> {
     });
 
     const { serve } = await import("./core.ts");
-    const { serveStatic } = await import("sevo/static");
-    const { log } = await import("sevo/log");
+    const { serveStatic } = await import("servok/static");
+    const { log } = await import("servok/log");
 
     // Resolve static assets relative to the entry file when possible so
     // colocated apps can rely on a nearby `public/` directory by default.

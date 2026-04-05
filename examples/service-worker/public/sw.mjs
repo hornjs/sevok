@@ -1,5 +1,5 @@
-import { Server } from "https://esm.sh/sevo";
-import { StreamRuntimeAdapter } from "https://esm.sh/sevo/stream?external=sevo";
+import { Server } from "https://esm.sh/servok";
+import { StreamRuntimeAdapter } from "https://esm.sh/servok/stream?external=servok";
 
 const pendingEntries = [];
 let resolveNextEntry;

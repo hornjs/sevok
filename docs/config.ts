@@ -49,10 +49,10 @@ export interface SiteConfig {
 }
 
 const siteConfig: SiteConfig = {
-  name: "Sevo",
+  name: "Servok",
   shortDescription: "Composable Server Primitives Across Runtimes",
   description: "Web-standard server primitives with context-based handlers, middleware, and runtime adapters for Bun, Deno, Node.js, and stream-based hosts.",
-  github: "hornjs/sevo",
+  github: "hornjs/servok",
   logo: "/icon.svg",
   url: inferSiteURL(),
   socials: {},
@@ -69,7 +69,7 @@ const siteConfig: SiteConfig = {
       playOnline: {
         label: "Play Online",
         icon: "i-heroicons-play",
-        to: "https://stackblitz.com/fork/github/hornjs/sevo/tree/main/examples/stackblitz?startScript=dev&title=Sevo%20StackBlitz%20Example",
+        to: "https://stackblitz.com/fork/github/hornjs/servok/tree/main/examples/stackblitz?startScript=dev&title=Servok%20StackBlitz%20Example",
       }
     },
     heroCode: {
@@ -88,12 +88,12 @@ export default {
 };
 
 /*
-Node.js: $ npx sevo
-          $ pnpx sevo
-          $ yarn dlx sevo
-Deno:    $ deno run -A npm:sevo
-Bun:     $ bunx --bun sevo
-CLI:     $ sevo
+Node.js: $ npx servok
+          $ pnpx servok
+          $ yarn dlx servok
+Deno:    $ deno run -A npm:servok
+Bun:     $ bunx --bun servok
+CLI:     $ servok
 */`.trim()
     },
     features: [

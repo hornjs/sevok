@@ -5,4 +5,4 @@ pages_build_output_dir = "dist"
 [[d1_databases]]
 binding = "servok_docs_db"
 database_name = "servok-docs-db"
-# database_id = "b1e505e6-3b8f-4f9f-ac60-cec354211d8b"
+database_id = "bc8e7984-72c3-4850-86c6-db3434b73cdd"

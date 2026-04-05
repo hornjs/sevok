@@ -9,9 +9,6 @@
     "generate": "npm run config && nuxt generate",
     "preview": "npm run config && nuxt preview"
   },
-  "exports": {
-    "./md4w-fast.wasm": "./md4w-fast.wasm"
-  },
   "dependencies": {
     "@nuxt/content": "^3.12.0",
     "@nuxt/ui": "^4.6.0",

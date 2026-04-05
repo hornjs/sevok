@@ -145,33 +145,6 @@ export const generateConfig = async () => {
   (await import("node:fs")).writeFileSync("./config.json", JSON.stringify(siteConfig, null, 2))
 }
 
-// const heroCodeHighlighter = createHighlighterCoreSync({
-//   engine: createJavaScriptRegexEngine(),
-//   langs: [tsLang],
-//   themes: [githubDark, githubLight],
-// });
-
-// siteConfig.landing.heroCode.contentHighlighted = heroCodeHighlighter.codeToHtml(siteConfig.landing.heroCode.content, {
-//   lang: "ts",
-//   defaultColor: "dark",
-//   themes: {
-//     default: "ayu-dark",
-//     dark: "ayu-dark",
-//     light: "ayu-light",
-//   },
-// })
-//   .replace(/background-color:#[0-9a-fA-F]{6};/g, "")
-//   .replaceAll(`<span class="line"></span>`, "")
-
-// // Convert markdown to HTML for landing items
-// const md4wWasm = readFileSync(new URL((import.meta.env.WASM_DIR ?? ".") +"/md4w-fast.wasm", import.meta.url));
-// initMd4wSync(new WebAssembly.Module(md4wWasm));
-// for (const item of siteConfig.landing.features) {
-//   if (item.description) {
-//     item.description = mdToHtml(item.description);
-//   }
-// }
-
 function inferSiteURL() {
   return (
     process.env.NUXT_PUBLIC_SITE_URL ||

@@ -8,8 +8,9 @@ import {
   type Server,
   type ServerHandlerFunction,
   type ServerMiddleware,
-  type ServerOptions,
   type RuntimeAdapter,
+  type ServerOptions,
+  type RoutingOptions,
 } from "./core.ts";
 import c from "./_color.ts";
 import { pkgMeta } from "./_meta.ts";
@@ -17,6 +18,19 @@ import { pkgMeta } from "./_meta.ts";
 export const defaultExts: string[] = [".mjs", ".js", ".mts", ".ts"];
 
 export const defaultEntries: string[] = ["server", "server/index", "src/server", "server/server"];
+
+/**
+ * Configuration object exported from a server entry file.
+ *
+ * Combines routing configuration (`routes`, `fetch`, `middleware`, `error`) with
+ * server options (`port`, `hostname`, `tls`, etc.) including runtime-specific
+ * options (`bun`, `deno`, `node`).
+ *
+ * The CLI supports two export formats:
+ * - Default export: `export default { fetch, routes, ... }`
+ * - Named exports: `export const fetch = ...; export const routes = ...`
+ */
+export type UserServerEntry = ServerOptions & RoutingOptions
 
 /**
  * Result of loading a server entry module.
@@ -629,18 +643,14 @@ export async function cliServe(cliOpts: CLIOptions): Promise<void> {
       throw new Error(NO_ENTRY_ERROR, { cause: cliOpts });
     }
 
-    const serverOptions = {
-      ...loaded.module?.default,
-      default: undefined,
-      ...loaded.module,
-    } as Partial<ServerOptions>;
+    const serverInit = { ...loaded.module } as Partial<UserServerEntry>;
 
     printInfo(cliOpts, loaded);
     server = serve({
-      ...serverOptions,
+      ...serverInit,
       gracefulShutdown: !!cliOpts.prod,
-      port: cliOpts.port ?? serverOptions.port,
-      hostname: cliOpts.hostname ?? cliOpts.host ?? serverOptions.hostname,
+      port: cliOpts.port ?? serverInit.port,
+      hostname: cliOpts.hostname ?? cliOpts.host ?? serverInit.hostname,
       tls: cliOpts.tls ? { cert: cliOpts.cert, key: cliOpts.key } : undefined,
       error: (error: unknown) => {
         console.error(error);
@@ -656,7 +666,7 @@ export async function cliServe(cliOpts: CLIOptions): Promise<void> {
       middleware: [
         log(),
         cliOpts.static ? serveStatic({ dir: cliOpts.static }) : undefined,
-        ...(serverOptions.middleware || []),
+        ...(serverInit.middleware || []),
       ].filter(Boolean) as ServerMiddleware[],
       adapter: loaded.adapter,
     });

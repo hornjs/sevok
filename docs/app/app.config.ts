@@ -11,7 +11,6 @@ export default defineAppConfig({
     prose: {
       codeIcon: {
         ".config": "vscode-icons:file-type-config",
-        '.plugin': 'vscode-icons:file-type-plugin',
         "package.json": "vscode-icons:file-type-node",
         "tsconfig.json": "vscode-icons:file-type-tsconfig",
         ".npmrc": "vscode-icons:file-type-npm",

@@ -30,7 +30,6 @@ export class DenoRuntimeAdapter implements RuntimeAdapter {
     this.#serveOptions = {
       ...resolvePortAndHost(options),
       reusePort: options.reusePort,
-      onError: options.error,
       ...tls,
       ...options.deno,
     };

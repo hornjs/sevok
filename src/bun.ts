@@ -31,13 +31,12 @@ export class BunRuntimeAdapter implements RuntimeAdapter {
       hostname,
       port,
       reusePort: options.reusePort,
-      error: options.error,
       ...(options.bun as any),
       fetch: (request) => server.fetch(request),
-      tls: {
+      tls: tls ? {
         ...tls,
         ...options.bun?.tls,
-      },
+      } : options.bun?.tls,
     };
   }
 

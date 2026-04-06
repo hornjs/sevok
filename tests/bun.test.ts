@@ -78,7 +78,6 @@ describe("BunRuntimeAdapter", () => {
         port: 4321,
         reusePort: true,
         idleTimeout: 10,
-        error: server.options.error,
         tls: expect.objectContaining({
           cert: server.options.tls.cert,
           key: server.options.tls.key,

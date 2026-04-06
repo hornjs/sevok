@@ -72,7 +72,6 @@ describe("DenoRuntimeAdapter", () => {
         hostname: "0.0.0.0",
         port: 4123,
         reusePort: true,
-        onError: server.options.error,
         cert: server.options.tls.cert,
         key: server.options.tls.key,
         passphrase: "secret",

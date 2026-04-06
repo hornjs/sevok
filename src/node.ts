@@ -10,6 +10,7 @@ import type {
   Server,
   RuntimeAdapter,
   RuntimeCapabilities,
+  ErrorHandler,
 } from "./core.ts";
 
 import { printListening, resolveTLSOptions, runtimeCapabilities } from "./_node_like.ts";
@@ -51,7 +52,7 @@ export class NodeRuntimeAdapter implements RuntimeAdapter {
     };
 
     const handler = async (request: IncomingMessage, response: ServerResponse) => {
-      await handleNodeRequest(server, request, response);
+      await handleNodeRequest(server, request, response, options.node?.onError);
     };
 
     if (isHttp2) {
@@ -127,14 +128,15 @@ async function handleNodeRequest(
   server: Server,
   request: IncomingMessage,
   response: ServerResponse,
+  onError?: ErrorHandler,
 ): Promise<void> {
   try {
     const nextRequest = await toRequest(request);
     const nextResponse = await server.fetch(nextRequest);
     await writeResponse(response, nextResponse);
   } catch (error) {
-    const handled = server.options.error
-      ? await server.options.error(error)
+    const handled = onError
+      ? await onError(error)
       : new Response("Internal Server Error", { status: 500 });
     await writeResponse(response, handled);
   }

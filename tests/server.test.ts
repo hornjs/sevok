@@ -321,17 +321,15 @@ describe("wrapFetch", () => {
   it("returns the original fetch handler when middleware is empty", () => {
     const fetch = vi.fn(async () => new Response("ok"));
 
-    expect(wrapFetch({ options: { fetch, middleware: [] } } as any)).toBe(fetch);
+    expect(wrapFetch({ fetch, middleware: [] })).toBe(fetch);
   });
 
   it("returns a middleware runner when middleware is present", async () => {
     const fetch = vi.fn(async () => new Response("ok"));
     const wrapped = wrapFetch({
-      options: {
-        fetch,
-        middleware: [async (ctx: any, next: any) => next(ctx)],
-      },
-    } as any);
+      fetch,
+      middleware: [async (ctx: any, next: any) => next(ctx)],
+    });
 
     const context = new InvocationContext({
       request: new Request("http://localhost/"),
@@ -347,26 +345,24 @@ describe("wrapFetch", () => {
   it("uses middlewareResolver for top-level and route middleware names", async () => {
     const calls: string[] = [];
     const wrapped = wrapFetch({
-      options: {
-        routes: {
-          "/": {
-            middleware: ["route"],
-            handle: async () => {
-              calls.push("handler");
-              return new Response("ok");
-            },
+      routes: {
+        "/": {
+          middleware: ["route"],
+          handle: async () => {
+            calls.push("handler");
+            return new Response("ok");
           },
-          "/*": async () => new Response("not found", { status: 404 }),
         },
-        middleware: ["global"],
-        middlewareResolver: vi.fn((name: string) => {
-          return async (ctx: InvocationContext, next: any) => {
-            calls.push(name);
-            return next(ctx);
-          };
-        }),
+        "/*": async () => new Response("not found", { status: 404 }),
       },
-    } as any);
+      middleware: ["global"],
+      middlewareResolver: vi.fn((name: string) => {
+        return async (ctx: InvocationContext, next: any) => {
+          calls.push(name);
+          return next(ctx);
+        };
+      }),
+    });
 
     const context = new InvocationContext({
       request: new Request("http://localhost/"),
@@ -603,5 +599,170 @@ describe("Server", () => {
     await server.close();
 
     await expect(ready).rejects.toMatchObject({ name: "AbortError" });
+  });
+});
+
+describe("Server.updateRouting", () => {
+  it("updates the request handler with new routing configuration", async () => {
+    const adapter = createAdapter();
+    const server = new Server({
+      adapter: adapter as any,
+      fetch: () => new Response("original"),
+      middleware: [],
+      manual: true,
+    });
+
+    await server.serve();
+
+    // Test original handler
+    const context1 = new InvocationContext({
+      request: new Request("http://localhost/"),
+      capabilities: adapter.capabilities as any,
+      params: {},
+    });
+    const response1 = await server.handle(context1);
+    expect(await response1.text()).toBe("original");
+
+    // Update routing
+    await server.updateRouting({
+      fetch: () => new Response("updated"),
+    });
+
+    // Test updated handler
+    const context2 = new InvocationContext({
+      request: new Request("http://localhost/"),
+      capabilities: adapter.capabilities as any,
+      params: {},
+    });
+    const response2 = await server.handle(context2);
+    expect(await response2.text()).toBe("updated");
+  });
+
+  it("dispatches ServerUpdateEvent after updating routing", async () => {
+    const adapter = createAdapter();
+    const server = new Server({
+      adapter: adapter as any,
+      fetch: () => new Response("ok"),
+      middleware: [],
+      manual: true,
+    });
+
+    await server.serve();
+
+    const events: string[] = [];
+    server.addEventListener("update", (event: any) => {
+      events.push(event.reason);
+    });
+
+    await server.updateRouting({
+      fetch: () => new Response("new"),
+    });
+
+    expect(events).toEqual(["routing"]);
+  });
+
+  it("throws when neither fetch nor routes with /* is provided", async () => {
+    const adapter = createAdapter();
+    const server = new Server({
+      adapter: adapter as any,
+      fetch: () => new Response("ok"),
+      middleware: [],
+      manual: true,
+    });
+
+    await server.serve();
+
+    await expect(
+      server.updateRouting({
+        routes: {
+          "/api": () => new Response("api"),
+        },
+      }),
+    ).rejects.toThrow("Server requires either `fetch` or a `routes` table with `/*`");
+  });
+
+  it("cancels earlier updateRouting calls when a new one is made", async () => {
+    const deferred = Promise.withResolvers<{ url: string | undefined }>();
+    const adapter = createAdapter({
+      serve: vi.fn(() => deferred.promise),
+    });
+    const server = new Server({
+      adapter: adapter as any,
+      fetch: () => new Response("original"),
+      middleware: [],
+      manual: true,
+    });
+
+    server.serve();
+
+    // Start first update (will wait for adapter)
+    const update1 = server.updateRouting({
+      fetch: () => new Response("first"),
+    });
+
+    // Start second update immediately
+    const update2 = server.updateRouting({
+      fetch: () => new Response("second"),
+    });
+
+    // Resolve adapter
+    deferred.resolve({ url: "http://localhost:3000/" });
+
+    await Promise.all([update1, update2]);
+
+    // Only the second update should take effect
+    const context = new InvocationContext({
+      request: new Request("http://localhost/"),
+      capabilities: adapter.capabilities as any,
+      params: {},
+    });
+    const response = await server.handle(context);
+    expect(await response.text()).toBe("second");
+  });
+
+  it("updates routes, middleware, and error handler together", async () => {
+    const adapter = createAdapter();
+    const calls: string[] = [];
+    const server = new Server({
+      adapter: adapter as any,
+      fetch: () => new Response("original"),
+      middleware: [],
+      manual: true,
+    });
+
+    await server.serve();
+
+    await server.updateRouting({
+      routes: {
+        "/api": () => {
+          calls.push("api");
+          return new Response("api");
+        },
+        "/*": () => {
+          calls.push("fallback");
+          return new Response("fallback");
+        },
+      },
+      middleware: [
+        async (ctx, next) => {
+          calls.push("middleware");
+          return next(ctx);
+        },
+      ],
+      error: (error) => {
+        calls.push("error");
+        return new Response("error", { status: 500 });
+      },
+    });
+
+    const context = new InvocationContext({
+      request: new Request("http://localhost/api"),
+      capabilities: adapter.capabilities as any,
+      params: {},
+    });
+    const response = await server.handle(context);
+
+    expect(await response.text()).toBe("api");
+    expect(calls).toEqual(["middleware", "api"]);
   });
 });

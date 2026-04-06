@@ -4,7 +4,7 @@ import type NodeHttp2 from "node:http2";
 import type * as NodeNet from "node:net";
 
 import { EventDispatcher } from "@hornjs/evt";
-import { errorPlugin, gracefulShutdownPlugin } from "./_plugins.ts";
+import c from "./_color.ts";
 import {
   canonicalizePath,
   compilePath,
@@ -354,39 +354,6 @@ export function raceRequestAbort<T>(promise: Promise<T>, request: Request): Prom
       },
     );
   });
-}
-
-/**
- * Internal helper used to track background tasks registered through
- * `waitUntil()`.
- */
-export interface WaitUntil {
-  waitUntil(promise: Promise<any> | PromiseLike<any>): void;
-  wait(): Promise<any>;
-}
-
-/**
- * Create a `waitUntil()` registry that keeps track of pending background work.
- *
- * Rejected tasks are logged and removed from the registry so shutdown can
- * continue cleanly.
- */
-export function createWaitUntil(): WaitUntil {
-  const promises = new Set<Promise<any> | PromiseLike<any>>();
-
-  return {
-    waitUntil: (promise: Promise<any> | PromiseLike<any>): void => {
-      if (typeof promise?.then !== "function") return;
-      let tracked: Promise<unknown>;
-      tracked = Promise.resolve(promise)
-        .catch(console.error)
-        .finally(() => promises.delete(tracked));
-      promises.add(tracked);
-    },
-    wait: (): Promise<any> => {
-      return Promise.all(promises);
-    },
-  };
 }
 
 /**
@@ -826,6 +793,143 @@ export function unstable_convertRoutesToHandler({
   };
 }
 
+/**
+ * Configuration for request routing and handling.
+ *
+ * Defines how incoming requests are matched, processed, and handled through
+ * routes, middleware, and error handlers. These options can be updated at
+ * runtime via `Server.updateRouting()`.
+ */
+export type RoutingOptions = {
+  /**
+   * Declarative route table matched before the fallback `fetch` handler.
+   *
+   * If this table does not define `/*`, `fetch` must be provided to handle
+   * unmatched requests.
+   */
+  routes?: ServerRoutes;
+
+  /**
+   * Fallback request handler.
+   *
+   * When `routes` is provided, this handles requests that do not match the
+   * route table. When `routes` is omitted, this acts as the primary request
+   * handler.
+   */
+  fetch?: ServerHandlerFunction;
+
+  /**
+   * Handle errors raised while processing requests.
+   *
+   * @note This handler will set built-in Bun and Deno error handler.
+   */
+  error?: ErrorHandler;
+
+  /**
+   * Server middleware handlers to run before the main fetch handler.
+   *
+   * Middleware is executed in the order provided.
+   */
+  middleware?: ServerMiddleware[];
+
+  /**
+   * Resolve named middleware entries at request execution time.
+   *
+   * When omitted, named middleware entries are skipped. Throw from the resolver
+   * if unresolved names should fail the request instead.
+   */
+  middlewareResolver?: ServerMiddlewareResolver;
+}
+
+/**
+ * Build the request handler pipeline from routing configuration.
+ *
+ * Combines routes, middleware, error handling, and the fallback fetch handler
+ * into a single composed function that processes incoming requests. This is the
+ * core request processing kernel used by `Server`.
+ */
+export function wrapFetch(options: RoutingOptions): ServerHandlerFunction {
+  const fetchHandler = options.fetch;
+  const routes = options.routes;
+  const middleware = options.middleware?.slice() ?? [];
+  const callMiddleware = (runOptions: Omit<RunMiddlewareOptions, "resolve">) => runMiddleware({
+    ...runOptions,
+    resolve: options.middlewareResolver,
+  });
+
+  let handler: ServerHandlerFunction;
+  if (!routes) {
+    if (!fetchHandler) {
+      throw new Error("Server requires either `routes` or `fetch`.");
+    }
+    handler = fetchHandler;
+  } else {
+    if (!routes["/*"]) {
+      if (!fetchHandler) {
+        throw new Error("Route tables without `/*` require a fallback `fetch` handler.");
+      }
+    }
+    handler = unstable_convertRoutesToHandler({
+      input: unstable_buildRouteTree(routes),
+      fallback: fetchHandler,
+      runRouteMiddleware: callMiddleware,
+    });
+  }
+
+  const errorHandler = options.error;
+  if (errorHandler) {
+    middleware.unshift((ctx, next) => {
+      try {
+        const res = next(ctx);
+        return res instanceof Promise ? res.catch((error) => errorHandler(error)) : res;
+      } catch (error) {
+        return errorHandler(error);
+      }
+    });
+  }
+
+  return middleware.length === 0
+    ? handler
+    : (context) => callMiddleware({
+      context,
+      middleware,
+      terminal: handler,
+    });
+}
+
+/**
+ * Internal helper used to track background tasks registered through
+ * `waitUntil()`.
+ */
+export interface WaitUntil {
+  waitUntil(promise: Promise<any> | PromiseLike<any>): void;
+  wait(): Promise<any>;
+}
+
+/**
+ * Create a `waitUntil()` registry that keeps track of pending background work.
+ *
+ * Rejected tasks are logged and removed from the registry so shutdown can
+ * continue cleanly.
+ */
+export function createWaitUntil(): WaitUntil {
+  const promises = new Set<Promise<any> | PromiseLike<any>>();
+
+  return {
+    waitUntil: (promise: Promise<any> | PromiseLike<any>): void => {
+      if (typeof promise?.then !== "function") return;
+      let tracked: Promise<unknown>;
+      tracked = Promise.resolve(promise)
+        .catch(console.error)
+        .finally(() => promises.delete(tracked));
+      promises.add(tracked);
+    },
+    wait: (): Promise<any> => {
+      return Promise.all(promises);
+    },
+  };
+}
+
 const emptyRouteParams = Object.freeze({}) as Record<string, string>;
 
 /**
@@ -884,6 +988,8 @@ export interface RuntimeAdapter {
    */
   readonly graceful?: boolean;
 
+  onerror?: ErrorHandler;
+
   /**
    * Prepare runtime-specific state before the server starts listening.
    */
@@ -918,7 +1024,11 @@ export type NodeServerOptions = (
   | NodeHttps.ServerOptions
   | NodeHttp2.ServerOptions
 ) &
-  NodeNet.ListenOptions & { http2?: boolean };
+  NodeNet.ListenOptions &
+{
+  http2?: boolean;
+  onError?: ErrorHandler;
+};
 
 /**
  * Resolve the runtime adapter for the current process.
@@ -1007,9 +1117,22 @@ export class ServerErrorEvent extends Event {
 }
 
 /**
- * Extension point that can mutate a `Server` instance during construction.
+ * Event fired when the server's routing configuration is updated.
+ *
+ * This event is dispatched after `updateRouting()` successfully replaces the
+ * request handler pipeline with new routes, middleware, or error handlers.
  */
-export type ServerPlugin = (server: Server) => void;
+export class ServerUpdateEvent extends Event {
+  /**
+   * Describes what triggered the update.
+   */
+  readonly reason: string;
+
+  constructor(reason: string = 'routing') {
+    super("update");
+    this.reason = reason;
+  }
+}
 
 /**
  * TLS server options.
@@ -1041,45 +1164,6 @@ export type TLSOptions = {
  * process-level features such as graceful shutdown.
  */
 export interface ServerOptions {
-  /**
-   * Declarative route table matched before the fallback `fetch` handler.
-   *
-   * If this table does not define `/*`, `fetch` must be provided to handle
-   * unmatched requests.
-   */
-  routes?: ServerRoutes;
-
-  /**
-   * Fallback request handler.
-   *
-   * When `routes` is provided, this handles requests that do not match the
-   * route table. When `routes` is omitted, this acts as the primary request
-   * handler.
-   */
-  fetch?: ServerHandlerFunction;
-
-  /**
-   * Handle errors raised while processing requests.
-   *
-   * @note This handler will set built-in Bun and Deno error handler.
-   */
-  error?: ErrorHandler;
-
-  /**
-   * Server middleware handlers to run before the main fetch handler.
-   *
-   * Middleware is executed in the order provided.
-   */
-  middleware: ServerMiddleware[];
-
-  /**
-   * Resolve named middleware entries at request execution time.
-   *
-   * When omitted, named middleware entries are skipped. Throw from the resolver
-   * if unresolved names should fail the request instead.
-   */
-  middlewareResolver?: ServerMiddlewareResolver;
-
   /**
    * If set to `true`, server will not start listening automatically.
    */
@@ -1160,20 +1244,7 @@ export interface ServerOptions {
  * Extends the base server options with the runtime adapter and optional
  * plugins that can mutate server behavior before the adapter is set up.
  */
-export interface ServerInit extends Omit<ServerOptions, "middleware"> {
-  /**
-   * Server plugins.
-   *
-   * Plugins run before the runtime adapter is set up, so they can adjust
-   * `server.options` or register server-level behavior.
-   */
-  plugins?: ServerPlugin[];
-
-  /**
-   * Global middleware applied before route-level or handler-level middleware.
-   */
-  middleware?: ServerMiddleware[];
-
+export interface ServerInit extends RoutingOptions, ServerOptions {
   /**
    * Runtime adapter responsible for integrating with the host environment.
    */
@@ -1217,6 +1288,8 @@ export interface ServerEventMap extends ServerEventMapCustom {
   close: ServerCloseEvent;
   /** Fired when adapter initialization fails with a non-abort error. */
   error: ServerErrorEvent;
+  /** Fired when the server's routing configuration is updated. */
+  update?: ServerUpdateEvent;
 }
 
 /**
@@ -1244,6 +1317,7 @@ export class Server extends EventDispatcher<ServerEventMap> {
   #kernel: ServerHandlerFunction;
   #adapter: RuntimeAdapter;
   #url?: string;
+  #version: number;
 
   #adapterPromise?: Promise<void> | undefined;
   #rejectAdapter?: ((reason?: any) => void) | undefined;
@@ -1256,26 +1330,24 @@ export class Server extends EventDispatcher<ServerEventMap> {
    * Create a server, apply plugins, prepare the runtime adapter, and optionally
    * start listening immediately.
    */
-  constructor({ middleware = [], plugins = [], adapter, ...options }: ServerInit) {
+  constructor({
+    routes,
+    fetch,
+    error,
+    middleware,
+    middlewareResolver,
+    adapter,
+    ...options
+  }: ServerInit) {
     super();
 
-    this.options = {
-      ...options,
-      middleware: [...middleware],
-    };
-
-    for (const plugin of plugins) {
-      plugin(this);
+    if (!fetch && (!routes || !routes["/*"])) {
+      throw new Error("Server requires either `fetch` or a `routes` table with `/*`.");
     }
 
-    errorPlugin(this);
+    this.options = options;
 
-    if (!this.options.fetch) {
-      if (!this.options.routes || !this.options.routes["/*"]) {
-        throw new Error("Server requires either `fetch` or a `routes` table with `/*`.");
-      }
-    }
-
+    this.#version = 0;
     this.#wait = createWaitUntil();
     this.waitUntil = this.#wait.waitUntil;
 
@@ -1290,8 +1362,15 @@ export class Server extends EventDispatcher<ServerEventMap> {
         gracefulShutdownPlugin(this);
       }
 
-      const kernel = wrapFetch(this);
+      const kernel = wrapFetch({
+        routes,
+        fetch,
+        error,
+        middleware,
+        middlewareResolver,
+      });
 
+      adapter.onerror = error;
       adapter.setup(this);
 
       this.#adapter = adapter;
@@ -1341,6 +1420,52 @@ export class Server extends EventDispatcher<ServerEventMap> {
    */
   get url(): string | undefined {
     return this.#url;
+  }
+
+  /**
+   * Update the server's routing configuration at runtime.
+   *
+   * Replaces the current request handler pipeline with new routes, middleware,
+   * error handlers, and fetch handler. This operation is atomic and safe to call
+   * while the server is actively handling requests.
+   *
+   * If multiple `updateRouting()` calls are made concurrently, only the most
+   * recent one will take effect. Earlier calls that are still waiting for adapter
+   * initialization will be cancelled automatically.
+   *
+   * @param options - New routing configuration to apply
+   * @throws {Error} If neither `fetch` nor a `routes` table with `/*` is provided
+   *
+   * @example
+   * ```ts
+   * await server.updateRouting({
+   *   routes: {
+   *     '/api/*': apiHandler,
+   *     '/*': fallbackHandler
+   *   },
+   *   middleware: [loggingMiddleware, authMiddleware]
+   * });
+   * ```
+   */
+  async updateRouting(options: RoutingOptions): Promise<void> {
+    if (!options.fetch && (!options.routes || !options.routes["/*"])) {
+      throw new Error("Server requires either `fetch` or a `routes` table with `/*`.");
+    }
+
+    const version = ++this.#version;
+
+    if (this.#adapterPromise) {
+      await this.#adapterPromise;
+    }
+
+    if (version !== this.#version) {
+      return;
+    }
+
+    this.#adapter.onerror = options.error;
+    this.#kernel = wrapFetch(options);
+
+    this.dispatchEvent(new ServerUpdateEvent('routing'));
   }
 
   /**
@@ -1476,42 +1601,92 @@ export class Server extends EventDispatcher<ServerEventMap> {
 }
 
 /**
- * Compose fetch handler, middleware, and optional error handling into the
- * single request kernel used by `Server`.
+ * Register process signal handlers that close the server gracefully.
+ *
+ * The first `SIGINT` / `SIGTERM` starts a graceful shutdown countdown. A second
+ * `SIGINT` forces active connections to close immediately.
  */
-export function wrapFetch(server: Server): ServerHandlerFunction {
-  const fetchHandler = server.options.fetch;
-  const routes = server.options.routes;
-  const middleware = server.options.middleware || [];
-  const callMiddleware = (options: Omit<RunMiddlewareOptions, "resolve">) => runMiddleware({
-    ...options,
-    resolve: server.options.middlewareResolver,
-  });
-
-  let handler: ServerHandlerFunction;
-  if (!routes) {
-    if (!fetchHandler) {
-      throw new Error("Server requires either `routes` or `fetch`.");
-    }
-    handler = fetchHandler;
-  } else {
-    if (!routes["/*"]) {
-      if (!fetchHandler) {
-        throw new Error("Route tables without `/*` require a fallback `fetch` handler.");
-      }
-    }
-    handler = unstable_convertRoutesToHandler({
-      input: unstable_buildRouteTree(routes),
-      fallback: fetchHandler,
-      runRouteMiddleware: callMiddleware,
-    });
+function gracefulShutdownPlugin(server: Server) {
+  const config = server.options?.gracefulShutdown;
+  if (
+    !globalThis.process?.on ||
+    config === false ||
+    (config === undefined && (process.env.CI || process.env.TEST))
+  ) {
+    return;
   }
 
-  return middleware.length === 0
-    ? handler
-    : (context) => callMiddleware({
-      context,
-      middleware,
-      terminal: handler,
-    });
+  const gracefulTimeout =
+    config === true || !config?.gracefulTimeout
+      ? Number.parseInt(process.env.SERVER_SHUTDOWN_TIMEOUT || "") || 5
+      : config.gracefulTimeout;
+
+  let isClosing = false;
+  let isClosed = false;
+
+  // Silence shutdown progress when the server itself is configured as silent.
+  const write = server.options.silent
+    ? () => { }
+    : process.stderr.write.bind(process.stderr);
+
+  /**
+   * Forcefully close active connections once graceful shutdown times out or the
+   * user presses Ctrl+C again.
+   */
+  const forceClose = async () => {
+    if (isClosed) return;
+    write(c.red("\x1b[2K\rForcibly closing connections...\n"));
+    isClosed = true;
+    await server.close(true);
+  };
+
+  /**
+   * Attempt to close the server cleanly while printing countdown updates.
+   */
+  const shutdown = async () => {
+    if (isClosing || isClosed) {
+      return;
+    }
+
+    // Force close with second Ctrl+C
+    // CLIs might trigger multiple SIGINTs, so we delay the listener registration
+    setTimeout(() => {
+      globalThis.process.once("SIGINT", forceClose);
+    }, 100);
+
+    isClosing = true;
+    const closePromise = server.close();
+
+    // Countdown with updates each second
+    for (let remaining = gracefulTimeout; remaining > 0; remaining--) {
+      write(
+        c.gray(
+          `\rStopping server gracefully (${remaining}s)... Press ${c.bold("Ctrl+C")} again to force close.`,
+        ),
+      );
+      const closed = await Promise.race([
+        closePromise.then(() => true),
+        new Promise<false>((r) => setTimeout(() => r(false), 1000)),
+      ]);
+      if (closed) {
+        write("\x1b[2K\r" + c.green("Server closed successfully.\n"));
+        isClosed = true;
+        return;
+      }
+    }
+
+    // Graceful period expired: force close
+    write("\x1b[2K\rGraceful shutdown timed out.\n");
+    await forceClose();
+  };
+
+  for (const sig of ["SIGINT", "SIGTERM"] as const) {
+    globalThis.process.on(sig, shutdown);
+  }
+
+  server.addEventListener('close', () => {
+    for (const sig of ["SIGINT", "SIGTERM"] as const) {
+      globalThis.process.off(sig, shutdown);
+    }
+  }, { once: true });
 }

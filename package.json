@@ -22,7 +22,7 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts",
+    ".": "./src/core.ts",
     "./bun": "./src/bun.ts",
     "./cli": "./src/cli.ts",
     "./deno": "./src/deno.ts",

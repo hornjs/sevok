@@ -35,7 +35,7 @@ new Server({
   }),
   routes: {
     "/hello": () =>
-      new Response("<h1>Hello from Fest Service Worker</h1>", {
+      new Response("<h1>Hello from Sevok Service Worker</h1>", {
         headers: {
           "Content-Type": "text/html; charset=UTF-8",
         },

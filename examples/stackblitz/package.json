@@ -1,10 +1,10 @@
 {
-  "name": "fest-examples-stackblitz",
+  "name": "sevok-examples-stackblitz",
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "start": "fest --prod",
-    "dev": "fest"
+    "start": "sevok --prod",
+    "dev": "sevok"
   },
   "devDependencies": {
     "sevok": "latest"

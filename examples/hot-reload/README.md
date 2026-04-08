@@ -6,7 +6,7 @@ This example demonstrates how to use `Server.updateRouting()` to hot-reload rout
 
 ```bash
 # Start the server
-node --loader tsx server.ts
+node --experimental-strip-types server.ts
 
 # In another terminal, make changes to routes.ts
 # The server will automatically reload the routes
@@ -34,5 +34,5 @@ node --loader tsx server.ts
 
 - This example uses Node.js `fs.watch()` for simplicity
 - In production, consider using a more robust file watcher like `chokidar`
-- Module cache clearing is Node.js specific
+- Route reloading uses a cache-busting ESM import query
 - For Bun/Deno, adjust the dynamic import strategy accordingly

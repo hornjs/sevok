@@ -1,0 +1,12 @@
+{
+  "name": "sevok-examples-hot-reload",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node --experimental-strip-types server.ts",
+    "dev": "node --experimental-strip-types server.ts"
+  },
+  "devDependencies": {
+    "sevok": "latest"
+  }
+}

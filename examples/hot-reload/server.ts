@@ -34,10 +34,7 @@ watch(routesFile, async (eventType) => {
     console.log("Routes file changed, reloading...");
 
     try {
-      // Clear module cache (Node.js specific)
-      delete require.cache[require.resolve("./routes.ts")];
-
-      // Dynamically import new routes
+      // Cache-bust the ESM import so Node loads the updated routes module.
       const { routes } = await import(`./routes.ts?t=${Date.now()}`);
 
       // Update server routing

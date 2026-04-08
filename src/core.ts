@@ -74,7 +74,7 @@ export type ServerMethodHandlers = Partial<Record<HTTPMethod | ServerWildcardMet
  * This is used by `wrapFetch()` to turn thrown exceptions or rejected promises
  * into a fallback `Response`.
  */
-export type ErrorHandler = (error: unknown) => MaybePromise<Response>;
+export type ServerErrorHandler = (error: unknown) => MaybePromise<Response>;
 
 /**
  * Request middleware.
@@ -823,7 +823,7 @@ export type RoutingOptions = {
    *
    * @note This handler will set built-in Bun and Deno error handler.
    */
-  error?: ErrorHandler;
+  error?: ServerErrorHandler;
 
   /**
    * Server middleware handlers to run before the main fetch handler.
@@ -988,8 +988,6 @@ export interface RuntimeAdapter {
    */
   readonly graceful?: boolean;
 
-  onerror?: ErrorHandler;
-
   /**
    * Prepare runtime-specific state before the server starts listening.
    */
@@ -1027,7 +1025,7 @@ export type NodeServerOptions = (
   NodeNet.ListenOptions &
 {
   http2?: boolean;
-  onError?: ErrorHandler;
+  onError?: ServerErrorHandler;
 };
 
 /**
@@ -1036,7 +1034,7 @@ export type NodeServerOptions = (
  * The adapter is chosen lazily so the package can stay portable across Bun,
  * Deno, and Node without importing runtime-specific code up front.
  */
-export async function loadServerAdapter(): Promise<RuntimeAdapter> {
+export async function loadRuntimeAdapter(): Promise<RuntimeAdapter> {
   if (process.versions.bun) {
     const { BunRuntimeAdapter } = await import("sevok/bun");
     return new BunRuntimeAdapter();
@@ -1073,7 +1071,7 @@ class PlaceholderRuntimeAdapter implements RuntimeAdapter {
   }
 
   setup(): void {
-    loadServerAdapter().then(
+    loadRuntimeAdapter().then(
       (adapter) => this.#callback(null, adapter),
       (error) => this.#callback(error, null),
     );
@@ -1370,7 +1368,6 @@ export class Server extends EventDispatcher<ServerEventMap> {
         middlewareResolver,
       });
 
-      adapter.onerror = error;
       adapter.setup(this);
 
       this.#adapter = adapter;
@@ -1462,7 +1459,6 @@ export class Server extends EventDispatcher<ServerEventMap> {
       return;
     }
 
-    this.#adapter.onerror = options.error;
     this.#kernel = wrapFetch(options);
 
     this.dispatchEvent(new ServerUpdateEvent('routing'));

@@ -10,7 +10,7 @@ import type {
   Server,
   RuntimeAdapter,
   RuntimeCapabilities,
-  ErrorHandler,
+  ServerErrorHandler,
 } from "./core.ts";
 
 import { printListening, resolveTLSOptions, runtimeCapabilities } from "./_node_like.ts";
@@ -128,7 +128,7 @@ async function handleNodeRequest(
   server: Server,
   request: IncomingMessage,
   response: ServerResponse,
-  onError?: ErrorHandler,
+  onError?: ServerErrorHandler,
 ): Promise<void> {
   try {
     const nextRequest = await toRequest(request);

@@ -643,7 +643,11 @@ export async function cliServe(cliOpts: CLIOptions): Promise<void> {
       throw new Error(NO_ENTRY_ERROR, { cause: cliOpts });
     }
 
-    const serverInit = { ...loaded.module } as Partial<UserServerEntry>;
+    const serverInit = {
+      ...loaded.module?.default,
+      default: undefined,
+      ...loaded.module,
+    } as Partial<UserServerEntry>;
 
     printInfo(cliOpts, loaded);
     server = serve({

@@ -28,9 +28,9 @@ import { Server, serve } from "sevok";
 import { BunRuntimeAdapter } from "sevok/bun";
 import { DenoRuntimeAdapter } from "sevok/deno";
 import { NodeRuntimeAdapter } from "sevok/node";
+import { StreamRuntimeAdapter } from "sevok/stream";
 import { log } from "sevok/log";
 import { serveStatic } from "sevok/static";
-import { StreamRuntimeAdapter } from "sevok/stream";
 ```
 
 ## 核心概念
@@ -98,17 +98,22 @@ import { StreamRuntimeAdapter } from "sevok/stream";
 
 ### 生命周期事件
 
-`Server` 继承自 [`@hornjs/evt`](https://github.com/hornjs/evt) 的类型化 `EventDispatcher`，目前会发出三个生命周期事件：
+`Server` 继承自 [`@hornjs/evt`](https://github.com/hornjs/evt) 的类型化 `EventDispatcher`，目前会发出四个生命周期事件：
 
 - `serve`：runtime adapter 报告监听地址后触发
+- `update`：通过 `server.update()` 更新路由配置时触发
 - `close`：关闭完成且 `waitUntil()` 后台任务全部结束后触发
 - `error`：异步初始化 runtime adapter 失败时触发
 
 ```ts
-import { Server, ServerErrorEvent, ServerServeEvent } from "sevok";
+import { Server, ServerErrorEvent, ServerServeEvent, ServerUpdateEvent } from "sevok";
 
 server.addEventListener("serve", (event: ServerServeEvent) => {
   console.log("server ready", server.url);
+});
+
+server.addEventListener("update", (event: ServerUpdateEvent) => {
+  console.log("routing updated", event.reason);
 });
 
 server.addEventListener("error", (event: ServerErrorEvent) => {
@@ -332,21 +337,33 @@ server.addEventListener("close", () => {
 - `ServerServeEvent`
 - `ServerCloseEvent`
 - `ServerErrorEvent`
+- `ServerUpdateEvent`
 - `serve`
 - `createContextKey`
 - `InvocationContext`
 - `runMiddleware`
 - `wrapFetch`
+- `loadRuntimeAdapter`
+- `ServerErrorHandler`
+- `ServerHandler`
+- `ServerHandlerFunction`
+- `ServerHandlerObject`
+- `ServerMiddleware`
+- `ServerMiddlewareFunction`
+- `ServerRoutes`
+- `toServerHandlerObject`
+- `raceRequestAbort`
+- `createWaitUntil`
 
 子路径导出：
 
-- `sevok/bun`
-- `sevok/cli`
-- `sevok/deno`
-- `sevok/log`
-- `sevok/node`
-- `sevok/static`
-- `sevok/stream`
+- `sevok/bun` - `BunRuntimeAdapter`
+- `sevok/cli` - CLI 工具
+- `sevok/deno` - `DenoRuntimeAdapter`
+- `sevok/log` - 日志工具
+- `sevok/node` - `NodeRuntimeAdapter`
+- `sevok/static` - `serveStatic`
+- `sevok/stream` - `StreamRuntimeAdapter`
 
 ## 开发
 

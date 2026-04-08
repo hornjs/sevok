@@ -28,9 +28,9 @@ import { Server, serve } from "sevok";
 import { BunRuntimeAdapter } from "sevok/bun";
 import { DenoRuntimeAdapter } from "sevok/deno";
 import { NodeRuntimeAdapter } from "sevok/node";
+import { StreamRuntimeAdapter } from "sevok/stream";
 import { log } from "sevok/log";
 import { serveStatic } from "sevok/static";
-import { StreamRuntimeAdapter } from "sevok/stream";
 ```
 
 ## Core Concepts
@@ -99,17 +99,22 @@ Use `createContextKey()` and `ctx.set()` / `ctx.get()` to share per-invocation s
 ### Lifecycle Events
 
 `Server` extends the typed `EventDispatcher` from [`@hornjs/evt`](https://github.com/hornjs/evt) and emits
-three lifecycle events:
+four lifecycle events:
 
 - `serve`: fired after the runtime adapter reports a listening URL
+- `update`: fired when routing configuration is updated via `server.update()`
 - `close`: fired after shutdown completes and `waitUntil()` work has settled
 - `error`: fired when asynchronous adapter initialization fails
 
 ```ts
-import { Server, ServerErrorEvent, ServerServeEvent } from "sevok";
+import { Server, ServerErrorEvent, ServerServeEvent, ServerUpdateEvent } from "sevok";
 
 server.addEventListener("serve", (event: ServerServeEvent) => {
   console.log("server ready", server.url);
+});
+
+server.addEventListener("update", (event: ServerUpdateEvent) => {
+  console.log("routing updated", event.reason);
 });
 
 server.addEventListener("error", (event: ServerErrorEvent) => {
@@ -333,21 +338,33 @@ Main export:
 - `ServerServeEvent`
 - `ServerCloseEvent`
 - `ServerErrorEvent`
+- `ServerUpdateEvent`
 - `serve`
 - `createContextKey`
 - `InvocationContext`
 - `runMiddleware`
 - `wrapFetch`
+- `loadRuntimeAdapter`
+- `ServerErrorHandler`
+- `ServerHandler`
+- `ServerHandlerFunction`
+- `ServerHandlerObject`
+- `ServerMiddleware`
+- `ServerMiddlewareFunction`
+- `ServerRoutes`
+- `toServerHandlerObject`
+- `raceRequestAbort`
+- `createWaitUntil`
 
 Subpath exports:
 
-- `sevok/bun`
-- `sevok/cli`
-- `sevok/deno`
-- `sevok/log`
-- `sevok/node`
-- `sevok/static`
-- `sevok/stream`
+- `sevok/bun` - `BunRuntimeAdapter`
+- `sevok/cli` - CLI utilities
+- `sevok/deno` - `DenoRuntimeAdapter`
+- `sevok/log` - Logging utilities
+- `sevok/node` - `NodeRuntimeAdapter`
+- `sevok/static` - `serveStatic`
+- `sevok/stream` - `StreamRuntimeAdapter`
 
 ## Development
 

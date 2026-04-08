@@ -19,7 +19,7 @@ const server = new Server({
 
 // Listen for update events
 server.addEventListener("update", (event) => {
-  console.log(`Server routing updated: ${event.reason}`);
+  console.log(`Server routing updated: ${event?.reason}`);
 });
 
 await server.ready();

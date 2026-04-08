@@ -4,7 +4,7 @@ import {
   createContextKey,
   createWaitUntil,
   InvocationContext,
-  loadServerAdapter,
+  loadRuntimeAdapter,
   raceRequestAbort,
   runMiddleware,
   toServerHandlerObject,
@@ -387,7 +387,7 @@ describe("loadServerAdapter", () => {
     });
 
     try {
-      const adapter = await loadServerAdapter();
+      const adapter = await loadRuntimeAdapter();
 
       expect(adapter).toMatchObject({ marker: "sevok" });
     } finally {

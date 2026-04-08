@@ -4,7 +4,7 @@ import { fork } from "node:child_process";
 import { dirname, relative, resolve } from "node:path";
 import { existsSync, statSync } from "node:fs";
 import {
-  loadServerAdapter,
+  loadRuntimeAdapter,
   type Server,
   type ServerHandlerFunction,
   type ServerMiddleware,
@@ -122,7 +122,7 @@ export async function loadServerEntry(opts: LoadOptions): Promise<LoadedServerEn
     if (!existsSync(entry)) {
       return {
         notFound: true,
-        adapter: await loadServerAdapter(),
+        adapter: await loadRuntimeAdapter(),
       };
     }
   } else {
@@ -139,7 +139,7 @@ export async function loadServerEntry(opts: LoadOptions): Promise<LoadedServerEn
     if (!entry) {
       return {
         notFound: true,
-        adapter: await loadServerAdapter(),
+        adapter: await loadRuntimeAdapter(),
       };
     }
   }
@@ -185,7 +185,7 @@ export async function loadServerEntry(opts: LoadOptions): Promise<LoadedServerEn
     module: mod,
     url,
     fetch: mod.fetch,
-    adapter: await loadServerAdapter(),
+    adapter: await loadRuntimeAdapter(),
   };
 }
 
